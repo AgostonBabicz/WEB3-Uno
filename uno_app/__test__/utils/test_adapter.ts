@@ -145,6 +145,9 @@ export function createRoundFromMemento(
     ? memento.lastUnoSayer
     : null;  
 
+  //memento tests bypass constructor we need to init this so its not undefined, [] is the default can be interactied with --> good👍
+  (round as any).endCallbacks = [];
+
   return round;
 }
 

@@ -1,7 +1,8 @@
 import { Shuffler } from "../utils/random_utils";
 import { DeckInterface } from "./interfaces/deck_interface";
 
-type Type = 'NUMBERED' | 'SKIP' | 'REVERSE' | 'DRAW' | 'WILD' | 'WILD DRAW'
+// predicates was crying about it
+export type Type = 'NUMBERED' | 'SKIP' | 'REVERSE' | 'DRAW' | 'WILD' | 'WILD DRAW'
 export const colors = ['BLUE','RED','GREEN','YELLOW'] as const;
 export type Color = typeof colors[number];
 export const cardNumbers = [0,1,2,3,4,5,6,7,8,9] as const;
