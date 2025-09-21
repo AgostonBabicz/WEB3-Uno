@@ -42,7 +42,8 @@ const game = ref(new Game(players!, targetScore, randomizer, shuffler, cardsPerP
             <div class="opponent" v-for="botName in botNames">
                 <span class="name">{{ botName }}</span>
                 <div class="bot-hand">
-                    <i v-for="(_, i) in game.currentRound()?.playerHand(players?.indexOf(botName) ?? 0) ?? []" :key="i" class="bot-card" ></i>
+                    <i v-for="(_, i) in game.currentRound()?.playerHand(players?.indexOf(botName) ?? 0) ?? []" :key="i"
+                        class="bot-card"></i>
                 </div>
                 <span class="count">
                     {{ game.currentRound()?.playerHand(players?.indexOf(botName) ?? 0)?.length ?? 0 }}
@@ -53,7 +54,11 @@ const game = ref(new Game(players!, targetScore, randomizer, shuffler, cardsPerP
         <!-- Center table: discard + draw -->
         <section class="table">
             <div class="pile discard">
-                <CardComponent type="NUMBERED" color="GREEN" :number="9" />
+                <CardComponent :type="game.currentRound()!.discardPile().top()!.type" :color="['NUMBERED', 'SKIP', 'REVERSE', 'DRAW'].includes(game.currentRound()!.discardPile().top()!.type)
+                    ? (game.currentRound()!.discardPile().top() as any).color
+                    : undefined" :number="game.currentRound()!.discardPile().top()!.type === 'NUMBERED'
+            ? (game.currentRound()!.discardPile().top() as any).number
+            : undefined" />
             </div>
             <div class="pile draw">
                 <Deck size="md" />
@@ -64,12 +69,10 @@ const game = ref(new Game(players!, targetScore, randomizer, shuffler, cardsPerP
         <footer class="hand">
             <span class="name">{{ playerName }}</span>
             <div class="fan">
-                <CardComponent
-                    v-for="card in game.currentRound()?.playerHand(players?.indexOf(playerName!) ?? 0) ?? []" :key="`${card.type}`"
-                    :type="card.type"
+                <CardComponent v-for="card in game.currentRound()?.playerHand(players?.indexOf(playerName!) ?? 0) ?? []"
+                    :key="`${card.type}`" :type="card.type"
                     :color="('color' in card && (card.type === 'NUMBERED' || card.type === 'SKIP' || card.type === 'REVERSE' || card.type === 'DRAW')) ? card.color : undefined"
-                    :number="('number' in card && card.type === 'NUMBERED') ? card.number : undefined"
-                />
+                    :number="('number' in card && card.type === 'NUMBERED') ? card.number : undefined" />
             </div>
 
             <div class="actions">
