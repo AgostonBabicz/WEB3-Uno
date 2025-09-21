@@ -1,6 +1,36 @@
 <script setup lang="ts">
-import Card from '../components/Card.vue'
+import CardComponent from '../components/CardComponent.vue'
 import Deck from '../components/Deck.vue'
+import { ref } from 'vue'
+import { Game } from '../model/uno';
+import { Card } from '../model/deck';
+import { Shuffler, standardRandomizer, standardShuffler } from '../utils/random_utils';
+
+
+const props = defineProps<{
+    botNumber: number
+    targetScore?: number
+    shuffler?: Shuffler<Card>
+    randomizer?: (bound: number) => number
+    cardsPerPlayer?: number
+    playerName?: string
+}>()
+
+let bots = ref<Array<string>>()
+const botNames: string[] = ["Bot A", "Bot B", "Bot C"]
+for (let i = 0; i < props.botNumber; i++) {
+    bots.value?.push(botNames[i])
+}
+const players = bots.value
+const playerName = props.playerName
+players?.push(playerName!)
+const targetScore = props.targetScore ?? 500
+const cardsPerPlayer = props.cardsPerPlayer ?? 7
+const shuffler = props.shuffler ?? standardShuffler
+const randomizer = props.randomizer ?? standardRandomizer
+
+
+const game = ref(new Game(players!, targetScore, randomizer, shuffler, cardsPerPlayer))
 </script>
 
 <template>
@@ -9,38 +39,21 @@ import Deck from '../components/Deck.vue'
 
         <!-- Opponents -->
         <header class="row opponents">
-            <div class="opponent">
-                <span class="name">Bot A</span>
-                <div class="bot-hand" aria-label="7 cards">
-                    <i class="bot-card"></i><i class="bot-card"></i><i class="bot-card"></i>
-                    <i class="bot-card"></i><i class="bot-card"></i><i class="bot-card"></i>
-                    <i class="bot-card"></i>
+            <div class="opponent" v-for="botName in botNames">
+                <span class="name">{{ botName }}</span>
+                <div class="bot-hand">
+                    <i v-for="(_, i) in game.currentRound()?.playerHand(players?.indexOf(botName) ?? 0) ?? []" :key="i" class="bot-card" ></i>
                 </div>
-                <span class="count">7</span>
-            </div>
-
-            <div class="opponent">
-                <span class="name">Bot B</span>
-                <div class="bot-hand" aria-label="5 cards">
-                    <i class="bot-card"></i><i class="bot-card"></i><i class="bot-card"></i>
-                    <i class="bot-card"></i><i class="bot-card"></i>
-                </div>
-                <span class="count">5</span>
-            </div>
-
-            <div class="opponent">
-                <span class="name">Bot C</span>
-                <div class="bot-hand" aria-label="3 cards">
-                    <i class="bot-card"></i><i class="bot-card"></i><i class="bot-card"></i>
-                </div>
-                <span class="count">3</span>
+                <span class="count">
+                    {{ game.currentRound()?.playerHand(players?.indexOf(botName) ?? 0)?.length ?? 0 }}
+                </span>
             </div>
         </header>
 
         <!-- Center table: discard + draw -->
         <section class="table">
             <div class="pile discard">
-                <Card type="NUMBERED" color="GREEN" :number="9" />
+                <CardComponent type="NUMBERED" color="GREEN" :number="9" />
             </div>
             <div class="pile draw">
                 <Deck size="md" />
@@ -49,13 +62,14 @@ import Deck from '../components/Deck.vue'
 
         <!-- Player hand (mock) -->
         <footer class="hand">
+            <span class="name">{{ playerName }}</span>
             <div class="fan">
-                <Card type="NUMBERED" color="RED" :number="5" />
-                <Card type="REVERSE" color="BLUE" />
-                <Card type="NUMBERED" color="YELLOW" :number="2" />
-                <Card type="DRAW" color="GREEN" />
-                <Card type="NUMBERED" color="BLUE" :number="9" />
-                <Card type="WILD" />
+                <CardComponent
+                    v-for="card in game.currentRound()?.playerHand(players?.indexOf(playerName!) ?? 0) ?? []" :key="`${card.type}`"
+                    :type="card.type"
+                    :color="('color' in card && (card.type === 'NUMBERED' || card.type === 'SKIP' || card.type === 'REVERSE' || card.type === 'DRAW')) ? card.color : undefined"
+                    :number="('number' in card && card.type === 'NUMBERED') ? card.number : undefined"
+                />
             </div>
 
             <div class="actions">

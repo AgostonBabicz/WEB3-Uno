@@ -2,11 +2,10 @@
 import Game from './views/Game.vue';
 import GameHome from './views/GameHome.vue';
 
-
 </script>
 
 <template>
-  <Game/>
+  <RouterView></RouterView>
 </template>
 
 <style scoped></style>
