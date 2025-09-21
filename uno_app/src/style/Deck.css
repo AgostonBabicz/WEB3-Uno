@@ -1,0 +1,86 @@
+.uno-deck {
+  position: relative;
+  width: 6.5rem;   /* md */
+  height: 9.5rem;
+  perspective: 800px;
+  user-select: none;
+}
+
+/* sizes */
+.uno-deck.sm { width: 5.2rem; height: 7.6rem; }
+.uno-deck.lg { width: 8rem;  height: 11.7rem; }
+
+.card {
+  position: absolute;
+  inset: 0;
+  border-radius: 0.9rem;
+  border: 3px solid #fff;
+  box-shadow: 0 10px 16px rgba(0,0,0,0.35);
+  overflow: hidden;
+  transform-origin: 50% 50%;
+}
+
+/* UNO back */
+.back {
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255,255,255,0.08), transparent 42%),
+    radial-gradient(circle at 70% 80%, rgba(255,255,255,0.06), transparent 48%),
+    #111;
+}
+
+/* symmetric stagger */
+.layer-3 { transform: translate(-6px, -6px) rotate(-4deg); filter: brightness(0.96); }
+.layer-2 { transform: translate( 6px,  6px) rotate( 4deg); filter: brightness(0.96); }
+.layer-1 { transform: translate(-3px,  3px) rotate(-2deg); filter: brightness(0.98); }
+.top     { transform: translate( 3px, -3px) rotate( 2deg); }
+
+/* centered oval */
+.top .oval {
+  position: absolute;
+  inset: 12%;
+  background: #fff;
+  border-radius: 100% / 70%;
+  transform: rotate(-18deg);
+  opacity: 0.08;
+}
+
+/* centered multicolor ring */
+.top::before {
+  content: "";
+  position: absolute;
+  inset: 10%;
+  border-radius: 100% / 70%;
+  transform: rotate(-18deg);
+  background:
+    conic-gradient(
+      #1d4ed8 0 25%,
+      #d62828 25% 50%,
+      #15803d 50% 75%,
+      #facc15 75% 100%
+    );
+  filter: saturate(1.1);
+  /* clean, even ring */
+  mask: radial-gradient(circle at center, transparent 52%, #000 53%);
+  -webkit-mask: radial-gradient(circle at center, transparent 52%, #000 53%);
+  opacity: 0.9;
+}
+
+/* UNO mark centered */
+.uno-mark {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: Impact, "Arial Black", system-ui, sans-serif;
+  font-size: 1.8rem;
+  letter-spacing: 1px;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+  transform: rotate(-18deg);
+}
+
+/* subtle, even hover */
+.uno-deck:hover .top {
+  transform: translate(3px, -5px) rotate(2deg);
+  box-shadow: 0 14px 22px rgba(0,0,0,0.4);
+}
