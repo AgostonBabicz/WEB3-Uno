@@ -17,7 +17,7 @@ export class Round implements RoundInterface {
   cardsPerPlay: number | undefined
   private startResolved: boolean = false
   private currentDirection = 'clockwise'
-  private direction: number
+  private direction: number;
   private currentColor = ""
   private resolving: boolean = false;
 
