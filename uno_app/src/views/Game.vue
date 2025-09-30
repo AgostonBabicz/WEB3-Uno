@@ -4,6 +4,7 @@ import Deck from '../components/Deck.vue'
 import { ref, onMounted } from 'vue'
 import { useUnoGame } from '../viewmodel/UseUnoGame'
 import type { Color } from '../model/deck'
+import { nextTick } from 'vue'
 
 const props = defineProps<{
   botNumber: number
@@ -25,6 +26,13 @@ const vm = useUnoGame({
   targetScore: props.targetScore,
   cardsPerPlayer: props.cardsPerPlayer,
 })
+const {
+  showPopUpMessage,
+  popUpMessage,
+  popUpTitle,
+  setMessage,
+  clearMessage
+} = vm
 
 // indices
 const botIndices = bots.map(n => players.indexOf(n)) // [0,1,2] for 3 bots used whit vm.handOf(index)
@@ -38,7 +46,28 @@ const yourHand = () => vm.handOf(meIx)
 const showColorPicker = ref<number | null>(null)
 const COLORS: Color[] = ['RED', 'YELLOW', 'GREEN', 'BLUE']
 
-function onPlayCard(ix: number) {
+// Pop-up message
+
+
+async function checkEnd() {
+  await nextTick()
+  if (vm.isGameOver()) {
+    const w = vm.gameWinner()
+    if (w !== undefined) {
+      setMessage('Game over', `Winner is ${players[w]}!`)
+    }
+    return
+  }
+
+  if (vm.hasEnded()) {
+    const w = vm.winner()
+    if (w !== undefined) {
+      setMessage('Round over', `${players[w]} wins the round!`)
+    }
+  }
+}
+
+async function onPlayCard(ix: number) {
   if (!myTurn()) return
   const card = yourHand()[ix]
   if (!card) return
@@ -47,17 +76,20 @@ function onPlayCard(ix: number) {
     showColorPicker.value = ix
   } else {
     vm.playCard(ix)
+    await checkEnd()
     void pumpBots()
   }
 }
-function pickColor(c: Color) {
+async function pickColor(c: Color) {
   if (showColorPicker.value === null) return
   vm.playCard(showColorPicker.value, c)
   showColorPicker.value = null
+  await checkEnd()
   void pumpBots()
 }
 
 function onDraw() {
+  console.log('draw clicked')
   if (!myTurn()) return
   vm.draw()
   void pumpBots()
@@ -68,7 +100,7 @@ function onUno() {
 
 function accuseOpponent(opIx: number) {
   // click opponent to accues
-  try { vm.accuse(meIx, opIx) } catch {} // accues already catches 
+  try { vm.accuse(meIx, opIx) } catch { } // accues already catches 
 }
 
 // PTT type bot tomfoolery 
@@ -84,6 +116,7 @@ async function pumpBots() {
       const acted = await vm.botTakeTurn()
       if (!acted) break
     }
+    await checkEnd()
   } finally {
     botsBusy = false
   }
@@ -96,6 +129,9 @@ onMounted(() => { void pumpBots() })
 <!-- Full PTT below-->
 <template>
   <main class="play uno-theme" :class="{ waiting: !myTurn() }">
+    <div class="target-score">
+      Target: {{ props.targetScore ?? 500 }}
+    </div>
     <div class="bg-swirl"></div>
 
     <!-- Turn banner -->
@@ -106,14 +142,13 @@ onMounted(() => { void pumpBots() })
 
     <!-- Opponents -->
     <header class="row opponents">
-      <div
-        class="opponent"
-        v-for="(botName, bi) in bots"
-        :key="botName"
-        @click="accuseOpponent(botIndices[bi])"
-        title="Click to accuse this player"
-      >
-        <span class="name">{{ botName }}</span>
+      <div class="opponent" v-for="(botName, bi) in bots" :key="botName" @click="accuseOpponent(botIndices[bi])"
+        title="Click to accuse this player">
+        <div class="column">
+          <span class="name">{{ botName }}</span>
+          <span class="score">(Score: {{ vm.scoreOf(botIndices[bi]) }})</span>
+        </div>
+
         <div class="bot-hand">
           <i v-for="i in vm.handCountOf(botIndices[bi])" :key="i" class="bot-card"></i>
         </div>
@@ -124,21 +159,16 @@ onMounted(() => { void pumpBots() })
     <!-- Center table: discard + draw -->
     <section class="table">
       <div class="pile discard">
-        <CardComponent
-          v-if="vm.topDiscard()"
-          :type="vm.topDiscard()!.type"
-          :color="(
-              vm.topDiscard()!.type === 'NUMBERED' ||
-              vm.topDiscard()!.type === 'SKIP' ||
-              vm.topDiscard()!.type === 'REVERSE' ||
-              vm.topDiscard()!.type === 'DRAW'
-            )
-            ? (vm.topDiscard() as any).color
-            : undefined"
-          :number="vm.topDiscard()!.type === 'NUMBERED'
+        <CardComponent v-if="vm.topDiscard()" :type="vm.topDiscard()!.type" :color="(
+          vm.topDiscard()!.type === 'NUMBERED' ||
+          vm.topDiscard()!.type === 'SKIP' ||
+          vm.topDiscard()!.type === 'REVERSE' ||
+          vm.topDiscard()!.type === 'DRAW'
+        )
+          ? (vm.topDiscard() as any).color
+          : undefined" :number="vm.topDiscard()!.type === 'NUMBERED'
             ? (vm.topDiscard() as any).number
-            : undefined"
-        />
+            : undefined" />
       </div>
       <div class="pile draw" @click="onDraw" title="Draw">
         <Deck size="md" />
@@ -148,30 +178,21 @@ onMounted(() => { void pumpBots() })
 
     <!-- Your hand -->
     <footer class="hand">
-      <span class="name">{{ me }}</span>
-
+      <div class="column">
+        <span class="name">{{ me }}</span>
+        <span class="score">(Score: {{ vm.scoreOf(meIx) }})</span>
+      </div>
       <div class="fan">
-        <button
-          v-for="(card, ix) in yourHand()"
-          :key="ix"
-          class="hand-card-btn"
-          :disabled="!myTurn() || !vm.canPlayAt(ix)"
-          @click="onPlayCard(ix)"
-          title="Play"
-        >
-          <CardComponent
-            :type="card.type"
-            :color="(
-                card.type === 'NUMBERED' ||
-                card.type === 'SKIP' ||
-                card.type === 'REVERSE' ||
-                card.type === 'DRAW'
-              )
-              ? (card as any).color
-              : undefined"
-            :number="card.type === 'NUMBERED' ? (card as any).number : undefined"
-            class="hand-card"
-          />
+        <button v-for="(card, ix) in yourHand()" :key="ix" class="hand-card-btn"
+          :disabled="!myTurn() || !vm.canPlayAt(ix)" @click="onPlayCard(ix)" title="Play">
+          <CardComponent :type="card.type" :color="(
+            card.type === 'NUMBERED' ||
+            card.type === 'SKIP' ||
+            card.type === 'REVERSE' ||
+            card.type === 'DRAW'
+          )
+            ? (card as any).color
+            : undefined" :number="card.type === 'NUMBERED' ? (card as any).number : undefined" class="hand-card" />
         </button>
       </div>
 
@@ -184,33 +205,23 @@ onMounted(() => { void pumpBots() })
     <!-- WILD color picker -->
     <div v-if="showColorPicker !== null" class="color-picker-backdrop">
       <div class="color-picker">
-        <button
-          v-for="c in COLORS"
-          :key="c"
-          class="color-chip"
-          :data-color="c.toLowerCase()"
-          @click="pickColor(c)"
-        >
+        <button v-for="c in COLORS" :key="c" class="color-chip" :data-color="c.toLowerCase()" @click="pickColor(c)">
           {{ c }}
         </button>
       </div>
     </div>
+
+    <!-- Pop-up message box -->
+    <div v-if="showPopUpMessage !== null" class="pop-up-message-backdrop" role="dialog" aria-modal="true"
+      @click.self="clearMessage"> <!-- close when clicking backdrop -->
+      <div class="pop-up-message" aria-live="polite">
+        <button class="close-btn" @click="clearMessage" aria-label="Close">×</button>
+        <h2>{{ popUpTitle }}</h2>
+        <p>{{ popUpMessage }}</p>
+      </div>
+    </div>
+
   </main>
 </template>
 
 <style scoped src="../style/Game.css"></style>
-<style scoped>
-.turn-banner { position: absolute; left: 50%; transform: translateX(-50%); top: 12px; font-weight: 800; }
-.play.waiting .turn-banner { opacity: .75; }
-.hand-card-btn { background: transparent; border: 0; padding: 0; margin: 0 6px; cursor: pointer; }
-.hand-card-btn:disabled { cursor: not-allowed; opacity: .6; }
-.pile.draw { cursor: pointer; }
-.pile-count { display: block; text-align: center; margin-top: 4px; opacity: .8; }
-.color-picker-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: grid; place-items: center; }
-.color-picker { background: #111; padding: 16px; border-radius: 12px; display: flex; gap: 12px; }
-.color-chip { padding: 10px 14px; border-radius: 999px; border: 0; color: #fff; font-weight: 700; cursor: pointer; }
-.color-chip[data-color="red"]    { background:#c0392b; }
-.color-chip[data-color="yellow"] { background:#f1c40f; color:#222; }
-.color-chip[data-color="green"]  { background:#27ae60; }
-.color-chip[data-color="blue"]   { background:#2980b9; }
-</style>

@@ -2,11 +2,28 @@ import { ref } from 'vue'
 import { Game } from '../model/uno'
 import { standardRandomizer, standardShuffler } from '../utils/random_utils'
 import type { Card, Color } from '../model/deck'
+import { Round } from '../model/round'
 
 type Opts = {
-  players: string[]           
+  players: string[]
   targetScore?: number
   cardsPerPlayer?: number
+}
+
+const showPopUpMessage = ref<boolean | null>(null)
+const popUpMessage = ref<string | null>(null)
+const popUpTitle = ref<string | null>(null)
+
+function setMessage(title: string, msg: string) {
+  popUpTitle.value = title
+  popUpMessage.value = msg
+  showPopUpMessage.value = true
+}
+
+function clearMessage() {
+  showPopUpMessage.value = null
+  popUpMessage.value = null
+  popUpTitle.value = null
 }
 
 export function useUnoGame(opts: Opts) {
@@ -20,6 +37,17 @@ export function useUnoGame(opts: Opts) {
       opts.cardsPerPlayer ?? 7,
     ),
   )
+  function attachRoundListener(r: Round) {
+    r.onEnd(({ winner }) => {
+      setMessage('Round over', `${opts.players[winner]} wins the round!`)
+    })
+  }
+  attachRoundListener(game.value.currentRound()!)
+  const origStartNewRound = (game.value as any).startNewRound.bind(game.value)
+    ; (game.value as any).startNewRound = () => {
+      origStartNewRound()
+      attachRoundListener(game.value.currentRound()!)
+    }
 
   // read
   function round() {
@@ -36,6 +64,21 @@ export function useUnoGame(opts: Opts) {
     const r = round()
     if (!r) return false
     return r.hasEnded()
+  }
+
+  function winner(): number | undefined {
+    const r = round()
+    if (!r) return undefined
+    return r.winner()
+  }
+  function gameWinner(): number | undefined {
+    return game.value.winner()
+  }
+  function isGameOver(): boolean {
+    return gameWinner() !== undefined
+  }
+  function scoreOf(ix: number): number {
+    return game.value.score(ix)
   }
 
   function topDiscard(): Card | undefined {
@@ -129,7 +172,7 @@ export function useUnoGame(opts: Opts) {
     if (ix === undefined || !isBot(ix)) return false
 
     // slight delay to feel alive
-    await new Promise(res => setTimeout(res, 450))
+    await new Promise(res => setTimeout(res, 850))
 
     // opportunistic accusation before acting, proably bot should watch this outside of its turn too? 
     botTryAccuse(ix)
@@ -141,6 +184,7 @@ export function useUnoGame(opts: Opts) {
       if (r.canPlay(i)) {
         const card = hand[i]
         if (card.type === 'WILD' || card.type === 'WILD DRAW') {
+          setMessage('Bot plays', `Bot ${opts.players[ix]} plays ${card.type} and chooses ${chooseWildColor(ix)}`)
           playCard(i, chooseWildColor(ix))
         } else {
           playCard(i)
@@ -156,6 +200,7 @@ export function useUnoGame(opts: Opts) {
     // say UNO if on 1 card forget 4/10
     if (handCountOf(ix) === 1) {
       if (Math.random() > 0.40) {
+        setMessage('Bot says UNO!', `Bot ${opts.players[ix]} says UNO!`)
         sayUno(ix)
       }
     }
@@ -167,10 +212,12 @@ export function useUnoGame(opts: Opts) {
     // state
     game,
     // reads
-    round, playerInTurn, hasEnded, topDiscard, drawPileSize, handOf, handCountOf, canPlayAt,
+    round, playerInTurn, hasEnded, winner, isGameOver, gameWinner, scoreOf, topDiscard, drawPileSize, handOf, handCountOf, canPlayAt,
     // writes
     playCard, draw, sayUno, accuse,
     // bot play
     botTakeTurn,
+    // pop-up message
+    showPopUpMessage, popUpMessage, popUpTitle, setMessage, clearMessage,
   }
 }
