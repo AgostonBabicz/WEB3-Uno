@@ -5,6 +5,7 @@ import { ref, onMounted } from 'vue'
 import { useUnoGame } from '../viewmodel/UseUnoGame'
 import type { Color } from '../model/deck'
 import { nextTick } from 'vue'
+import router from '../router'
 
 const props = defineProps<{
   botNumber: number
@@ -54,7 +55,12 @@ async function checkEnd() {
   if (vm.isGameOver()) {
     const w = vm.gameWinner()
     if (w !== undefined) {
-      setMessage('Game over', `Winner is ${players[w]}!`)
+      router.push({
+        name: 'GameOver',
+        query: {
+          winner: players[w]
+        }
+      })
     }
     return
   }

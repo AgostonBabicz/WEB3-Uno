@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Game from '../views/Game.vue'
 import GameHome from '../views/GameHome.vue'
+import GameOver from '../views/GameOver.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -21,6 +22,14 @@ const router = createRouter({
         targetScore: Number(route.query.targetScore) || 500,
       }) // pass game settings
     },
+    {
+      path: '/game-over',
+      name: 'GameOver',
+      component: GameOver,
+      props: route => ({
+        winner: route.query.winner || 'Unknown'
+      })
+    }
   ],
 })
 
