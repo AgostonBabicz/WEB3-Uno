@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import CardComponent from '../components/CardComponent.vue'
 import Deck from '../components/Deck.vue'
-import { ref, onMounted } from 'vue'
-import { useUnoGame } from '../viewmodel/UseUnoGame'
+import { ref, onMounted, computed } from 'vue'
 import type { Color } from '../model/deck'
 import { nextTick } from 'vue'
 import router from '../router'
+import { useUnoGameStore } from '../../store/unoGameStore'
+import { storeToRefs } from 'pinia'
 
 const props = defineProps<{
   botNumber: number
@@ -14,62 +15,43 @@ const props = defineProps<{
   playerName?: string
 }>()
 
-// should it be dynamic (infinite bots)?
 const botNames = ['Bot A', 'Bot B', 'Bot C']
-const botCount = Math.min(Math.max(props.botNumber, 1), 3) //PTT ¯\_(ツ)_/¯
+const botCount = Math.min(Math.max(props.botNumber, 1), 3)
 const bots = botNames.slice(0, botCount)
 const me = props.playerName || 'You'
 const players = [...bots, me]
 
-// view model
-const vm = useUnoGame({
-  players,
-  targetScore: props.targetScore,
-  cardsPerPlayer: props.cardsPerPlayer,
-})
-const {
-  showPopUpMessage,
-  popUpMessage,
-  popUpTitle,
-  setMessage,
-  clearMessage
-} = vm
+// Pinia store
+const vm = useUnoGameStore()
+vm.init({ players, targetScore: props.targetScore, cardsPerPlayer: props.cardsPerPlayer })
 
-// indices
-const botIndices = bots.map(n => players.indexOf(n)) // [0,1,2] for 3 bots used whit vm.handOf(index)
+const { setMessage, clearMessage } = vm
+const { showPopUpMessage, popUpMessage, popUpTitle } = storeToRefs(vm)
+
+const botIndices = bots.map(n => players.indexOf(n))
 const meIx = players.indexOf(me)
 
 // helpers
 const myTurn = () => vm.playerInTurn() === meIx
 const yourHand = () => vm.handOf(meIx)
 
-// WILD color picker
+const currentTurn = computed(() => vm.playerInTurn())
+
 const showColorPicker = ref<number | null>(null)
 const COLORS: Color[] = ['RED', 'YELLOW', 'GREEN', 'BLUE']
-
-// Pop-up message
-
 
 async function checkEnd() {
   await nextTick()
   if (vm.isGameOver()) {
     const w = vm.gameWinner()
     if (w !== undefined) {
-      router.push({
-        name: 'GameOver',
-        query: {
-          winner: players[w]
-        }
-      })
+      router.push({ name: 'GameOver', query: { winner: players[w] } })
     }
     return
   }
-
   if (vm.hasEnded()) {
     const w = vm.winner()
-    if (w !== undefined) {
-      setMessage('Round over', `${players[w]} wins the round!`)
-    }
+    if (w !== undefined) setMessage('Round over', `${players[w]} wins the round!`)
   }
 }
 
@@ -95,7 +77,6 @@ async function pickColor(c: Color) {
 }
 
 function onDraw() {
-  console.log('draw clicked')
   if (!myTurn()) return
   vm.draw()
   void pumpBots()
@@ -103,10 +84,8 @@ function onDraw() {
 function onUno() {
   vm.sayUno(meIx)
 }
-
 function accuseOpponent(opIx: number) {
-  // click opponent to accues
-  try { vm.accuse(meIx, opIx) } catch { } // accues already catches 
+  try { vm.accuse(meIx, opIx) } catch {}
 }
 
 // PTT type bot tomfoolery 
@@ -135,21 +114,23 @@ onMounted(() => { void pumpBots() })
 <!-- Full PTT below-->
 <template>
   <main class="play uno-theme" :class="{ waiting: !myTurn() }">
-    <div class="target-score">
-      Target: {{ props.targetScore ?? 500 }}
-    </div>
+    <div class="target-score">Target: {{ props.targetScore ?? 500 }}</div>
     <div class="bg-swirl"></div>
 
-    <!-- Turn banner -->
     <div class="turn-banner">
       <span v-if="myTurn()">Your turn</span>
-      <span v-else>Waiting for {{ players[vm.playerInTurn() ?? 0] }}…</span>
+      <span v-else>Waiting for {{ players[currentTurn ?? 0] }}…</span>
     </div>
 
-    <!-- Opponents -->
     <header class="row opponents">
-      <div class="opponent" v-for="(botName, bi) in bots" :key="botName" @click="accuseOpponent(botIndices[bi])"
-        title="Click to accuse this player">
+      <div
+        v-for="(botName, bi) in bots"
+        :key="botName"
+        class="opponent"
+        :class="{ playing: currentTurn === botIndices[bi] }"
+        @click="accuseOpponent(botIndices[bi])"
+        title="Click to accuse this player"
+      >
         <div class="column">
           <span class="name">{{ botName }}</span>
           <span class="score">(Score: {{ vm.scoreOf(botIndices[bi]) }})</span>
@@ -162,19 +143,20 @@ onMounted(() => { void pumpBots() })
       </div>
     </header>
 
-    <!-- Center table: discard + draw -->
+    <!-- Center table -->
     <section class="table">
       <div class="pile discard">
-        <CardComponent v-if="vm.topDiscard()" :type="vm.topDiscard()!.type" :color="(
-          vm.topDiscard()!.type === 'NUMBERED' ||
-          vm.topDiscard()!.type === 'SKIP' ||
-          vm.topDiscard()!.type === 'REVERSE' ||
-          vm.topDiscard()!.type === 'DRAW'
-        )
-          ? (vm.topDiscard() as any).color
-          : undefined" :number="vm.topDiscard()!.type === 'NUMBERED'
-            ? (vm.topDiscard() as any).number
-            : undefined" />
+        <CardComponent
+          v-if="vm.topDiscard()"
+          :type="vm.topDiscard()!.type"
+          :color="(
+            vm.topDiscard()!.type === 'NUMBERED' ||
+            vm.topDiscard()!.type === 'SKIP' ||
+            vm.topDiscard()!.type === 'REVERSE' ||
+            vm.topDiscard()!.type === 'DRAW'
+          ) ? (vm.topDiscard() as any).color : undefined"
+          :number="vm.topDiscard()!.type === 'NUMBERED' ? (vm.topDiscard() as any).number : undefined"
+        />
       </div>
       <div class="pile draw" @click="onDraw" title="Draw">
         <Deck size="md" />
@@ -183,22 +165,31 @@ onMounted(() => { void pumpBots() })
     </section>
 
     <!-- Your hand -->
-    <footer class="hand">
+    <footer class="hand" :class="{ playing: myTurn() }">
       <div class="column">
-        <span class="name">{{ me }}</span>
+        <span class="name">{{ players[meIx] }}</span>
         <span class="score">(Score: {{ vm.scoreOf(meIx) }})</span>
       </div>
       <div class="fan">
-        <button v-for="(card, ix) in yourHand()" :key="ix" class="hand-card-btn"
-          :disabled="!myTurn() || !vm.canPlayAt(ix)" @click="onPlayCard(ix)" title="Play">
-          <CardComponent :type="card.type" :color="(
-            card.type === 'NUMBERED' ||
-            card.type === 'SKIP' ||
-            card.type === 'REVERSE' ||
-            card.type === 'DRAW'
-          )
-            ? (card as any).color
-            : undefined" :number="card.type === 'NUMBERED' ? (card as any).number : undefined" class="hand-card" />
+        <button
+          v-for="(card, ix) in yourHand()"
+          :key="ix"
+          class="hand-card-btn"
+          :disabled="!myTurn() || !vm.canPlayAt(ix)"
+          @click="onPlayCard(ix)"
+          title="Play"
+        >
+          <CardComponent
+            :type="card.type"
+            :color="(
+              card.type === 'NUMBERED' ||
+              card.type === 'SKIP' ||
+              card.type === 'REVERSE' ||
+              card.type === 'DRAW'
+            ) ? (card as any).color : undefined"
+            :number="card.type === 'NUMBERED' ? (card as any).number : undefined"
+            class="hand-card"
+          />
         </button>
       </div>
 
@@ -217,16 +208,19 @@ onMounted(() => { void pumpBots() })
       </div>
     </div>
 
-    <!-- Pop-up message box -->
-    <div v-if="showPopUpMessage !== null" class="pop-up-message-backdrop" role="dialog" aria-modal="true"
-      @click.self="clearMessage"> <!-- close when clicking backdrop -->
+    <div
+      v-if="showPopUpMessage !== null"
+      class="pop-up-message-backdrop"
+      role="dialog"
+      aria-modal="true"
+      @click.self="clearMessage"
+    >
       <div class="pop-up-message" aria-live="polite">
         <button class="close-btn" @click="clearMessage" aria-label="Close">×</button>
         <h2>{{ popUpTitle }}</h2>
         <p>{{ popUpMessage }}</p>
       </div>
     </div>
-
   </main>
 </template>
 

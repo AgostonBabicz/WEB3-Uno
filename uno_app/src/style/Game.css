@@ -127,7 +127,10 @@
 .color-chip[data-color="yellow"] { background:#f1c40f; color:#222; }
 .color-chip[data-color="green"]  { background:#27ae60; }
 .color-chip[data-color="blue"]   { background:#2980b9; }
-
+.opponent.playing, .hand.playing {
+  background-color: #d9f7d9; /* light green */
+  transition: background-color 150ms ease-in-out;
+}
 /* Backdrop */
 .pop-up-message-backdrop {
   position: fixed;

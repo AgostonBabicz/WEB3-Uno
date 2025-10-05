@@ -1,8 +1,10 @@
 import { ref } from 'vue'
-import { Game } from '../model/uno'
-import { standardRandomizer, standardShuffler } from '../utils/random_utils'
-import type { Card, Color } from '../model/deck'
-import { Round } from '../model/round'
+import { defineStore } from 'pinia'
+import { Card, Color } from '../src/model/deck'
+import { Round } from '../src/model/round'
+import { Game } from '../src/model/uno'
+import { standardRandomizer, standardShuffler } from '../src/utils/random_utils'
+import { randomDelay } from '../src/utils/bot_delay'
 
 type Opts = {
   players: string[]
@@ -10,138 +12,150 @@ type Opts = {
   cardsPerPlayer?: number
 }
 
-const showPopUpMessage = ref<boolean | null>(null)
-const popUpMessage = ref<string | null>(null)
-const popUpTitle = ref<string | null>(null)
-
-function setMessage(title: string, msg: string) {
-  popUpTitle.value = title
-  popUpMessage.value = msg
-  showPopUpMessage.value = true
+type GameLike = {
+  startNewRound: () => void
+  currentRound: () => Round | undefined
+  winner: () => number | undefined
+  score: (ix: number) => number
 }
 
-function clearMessage() {
-  showPopUpMessage.value = null
-  popUpMessage.value = null
-  popUpTitle.value = null
-}
+// basically like UseUnoGame but adapted to Pinia store style
+export const useUnoGameStore = defineStore('unoGame', () => {
+  const showPopUpMessage = ref<boolean | null>(null)
+  const popUpMessage = ref<string | null>(null)
+  const popUpTitle = ref<string | null>(null)
 
-//kept this for reference, maybe use pinia maybe not
-export function useUnoGame(opts: Opts) {
-  // model, reactive box ? so vue tracks the reference and our getters read 'fresh' state with game.value
-  const game = ref(
-    new Game(
+  function setMessage(title: string, msg: string) {
+    popUpTitle.value = title
+    popUpMessage.value = msg
+    showPopUpMessage.value = true
+  }
+  function clearMessage() {
+    showPopUpMessage.value = null
+    popUpMessage.value = null
+    popUpTitle.value = null
+  }
+
+  const optsRef = ref<Opts | null>(null)
+  // keep the real instance, but expose as GameLike for helpers to avoid  mismatch
+  const game = ref<Game | null>(null)
+
+  function attachRoundListener(r: Round) {
+    r.onEnd?.(({ winner }) => {
+      const opts = optsRef.value
+      if (!opts) return
+      setMessage('Round over', `${opts.players[winner]} wins the round!`)
+    })
+  }
+
+  // accept the minimal shape we patch
+  function wireStartNewRound(g: GameLike) {
+    const origStartNewRound = g.startNewRound.bind(g)
+    ;(g as any).startNewRound = () => {
+      origStartNewRound()
+      const cr = g.currentRound()
+      if (cr) attachRoundListener(cr)
+    }
+  }
+
+  function init(opts: Opts) {
+    optsRef.value = opts
+    game.value = new Game(
       opts.players,
       opts.targetScore ?? 500,
       standardRandomizer,
       standardShuffler,
       opts.cardsPerPlayer ?? 7,
-    ),
-  )
-  function attachRoundListener(r: Round) {
-    r.onEnd(({ winner }) => {
-      setMessage('Round over', `${opts.players[winner]} wins the round!`)
-    })
+    )
+    // cast to GameLike only where needed
+    wireStartNewRound(game.value as unknown as GameLike)
+    const r = (game.value as unknown as GameLike).currentRound()
+    if (r) attachRoundListener(r)
+    clearMessage()
   }
-  attachRoundListener(game.value.currentRound()!)
-  const origStartNewRound = (game.value as any).startNewRound.bind(game.value)
-    ; (game.value as any).startNewRound = () => {
-      origStartNewRound()
-      attachRoundListener(game.value.currentRound()!)
-    }
 
-  // read
+  // reads
   function round() {
-    return game.value.currentRound()
+    return (game.value as unknown as GameLike | null)?.currentRound()
   }
-
   function playerInTurn(): number | undefined {
     const r = round()
     if (!r) return undefined
     return r.playerInTurn()
   }
-
   function hasEnded(): boolean {
     const r = round()
     if (!r) return false
     return r.hasEnded()
   }
-
   function winner(): number | undefined {
     const r = round()
     if (!r) return undefined
     return r.winner()
   }
   function gameWinner(): number | undefined {
-    return game.value.winner()
+    const g = game.value as unknown as GameLike | null
+    return g?.winner()
   }
   function isGameOver(): boolean {
     return gameWinner() !== undefined
   }
   function scoreOf(ix: number): number {
-    return game.value.score(ix)
+    const g = game.value as unknown as GameLike | null
+    return g ? g.score(ix) : 0
   }
-
   function topDiscard(): Card | undefined {
     const r = round()
     if (!r) return undefined
     return r.discardPile().top()
   }
-
   function drawPileSize(): number {
     const r = round()
     if (!r) return 0
     return r.drawPile().size
   }
-
   function handOf(ix: number): Card[] {
     const r = round()
     if (!r) return []
     return r.playerHand(ix) ?? []
   }
-
   function handCountOf(ix: number): number {
     return handOf(ix).length
   }
-
   function canPlayAt(cardIx: number): boolean {
     const r = round()
     if (!r) return false
     return r.canPlay(cardIx)
   }
 
-  // write
+  // writes
   function playCard(cardIx: number, askedColor?: Color): void {
     const r = round()
     if (!r) return
     r.play(cardIx, askedColor)
   }
-
   function draw(): void {
     const r = round()
     if (!r) return
     r.draw()
   }
-
   function sayUno(playerIx: number): void {
     const r = round()
     if (!r) return
     r.sayUno(playerIx)
   }
-
   function accuse(accuser: number, accused: number): boolean {
     const r = round()
     if (!r) return false
     return r.catchUnoFailure({ accuser, accused })
   }
 
-  // ----------- bot stuff --------
-  // bots are all players except the last one me since router builds players this way: [...bots, me]
+  // bots
   function isBot(ix: number) {
+    const opts = optsRef.value
+    if (!opts) return false
     return ix >= 0 && ix < opts.players.length - 1
   }
-
-  // color choice for wilds: pick the most common in hand with fallback to red
   function chooseWildColor(ix: number): Color {
     const hand = handOf(ix)
     const counts: Record<Color, number> = { RED: 0, YELLOW: 0, GREEN: 0, BLUE: 0 }
@@ -155,37 +169,35 @@ export function useUnoGame(opts: Opts) {
     }
     return best
   }
-
-  // try to accuse anybody 
   function botTryAccuse(ix: number) {
+    const opts = optsRef.value
+    if (!opts) return
     for (let t = 0; t < opts.players.length; t++) {
       if (t === ix) continue
-      try { accuse(ix, t) } catch { /* ignore */ }
+      try {
+        accuse(ix, t) ? setMessage('You are accused!', `${opts.players[ix]} accuses ${opts.players[t]} of not saying UNO! Now Draw 4`) : null
+      }
+      catch (e) { /* ignore, just means bot was wrong */}
     }
   }
-  //ptt bot:
-  // One bot turn. Returns true if it actually played/drew (i.e., it was a bot’s turn).
   async function botTakeTurn(): Promise<boolean> {
     const r = round()
     if (!r) return false
-
     const ix = r.playerInTurn()
     if (ix === undefined || !isBot(ix)) return false
 
-    // slight delay to feel alive
-    await new Promise(res => setTimeout(res, 850))
-
-    // opportunistic accusation before acting, proably bot should watch this outside of its turn too? 
+    //changed the delay to vary
+    await new Promise(res => setTimeout(res, randomDelay()))
     botTryAccuse(ix)
 
-    // pick first legal card, else draw
     const hand = handOf(ix)
     let played = false
     for (let i = 0; i < hand.length; i++) {
       if (r.canPlay(i)) {
         const card = hand[i]
         if (card.type === 'WILD' || card.type === 'WILD DRAW') {
-          setMessage('Bot plays', `Bot ${opts.players[ix]} plays ${card.type} and chooses ${chooseWildColor(ix)}`)
+
+          setMessage('Bot plays', `Bot ${optsRef.value?.players[ix]} plays ${card.type} and chooses ${chooseWildColor(ix)}`)
           playCard(i, chooseWildColor(ix))
         } else {
           playCard(i)
@@ -198,27 +210,28 @@ export function useUnoGame(opts: Opts) {
       draw()
     }
 
-    // say UNO if on 1 card forget 4/10
+    // 50% chance to say UNO when having one card left
     if (handCountOf(ix) === 1) {
-      if (Math.random() > 0.40) {
-        setMessage('Bot says UNO!', `Bot ${opts.players[ix]} says UNO!`)
+      if (Math.random() > 0.50) {
+        setMessage('Bot says UNO!', `Bot ${optsRef.value?.players[ix]} says UNO!`)
         sayUno(ix)
       }
     }
-
     return true
   }
 
+  function reset() {
+    const opts = optsRef.value
+    if (!opts) return
+    init(opts)
+  }
+
   return {
-    // state
+    init, reset,
     game,
-    // reads
     round, playerInTurn, hasEnded, winner, isGameOver, gameWinner, scoreOf, topDiscard, drawPileSize, handOf, handCountOf, canPlayAt,
-    // writes
     playCard, draw, sayUno, accuse,
-    // bot play
     botTakeTurn,
-    // pop-up message
     showPopUpMessage, popUpMessage, popUpTitle, setMessage, clearMessage,
   }
-}
+})
