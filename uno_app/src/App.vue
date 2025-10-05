@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import Game from './views/Game.vue';
+import GameHome from './views/GameHome.vue';
+
 </script>
 
 <template>
-  <h1>Uno</h1>
-  <button>Play</button>
+  <RouterView></RouterView>
 </template>
 
 <style scoped></style>
