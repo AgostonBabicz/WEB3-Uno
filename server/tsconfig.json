@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "resolveJsonModule": true,
+    "strict": false,
+    "sourceMap": false,
+    "preserveConstEnums": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "outDir": ".build",
+    "baseUrl": "./",
+    "typeRoots": ["node_modules/@types", "types", "@types/node"],
+    "types": ["node"],
+    "rootDir": "./",
+    "esModuleInterop": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "module": "commonjs",
+    "target": "ESNext",
+    "moduleResolution": "node",
+    "inlineSourceMap": false
+  },
+  "exclude": ["node_modules"]
+}
