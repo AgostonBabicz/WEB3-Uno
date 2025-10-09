@@ -10,14 +10,14 @@ export type CardNumber = (typeof cardNumbers)[number]
 
 type NumberCard = { type: 'NUMBERED'; color: Color; number: CardNumber }
 type SpecialCard = { type: 'SKIP' | 'REVERSE' | 'DRAW'; color: Color }
-type WildCard = { type: 'WILD' | 'WILD DRAW' }
+type WildCard = { type: 'WILD' | 'WILD_DRAW' }
 export type ColoredCard = Readonly<NumberCard | SpecialCard>
 
 type TypedCard<T extends Type> = T extends 'NUMBERED'
   ? NumberCard
   : T extends 'SKIP' | 'REVERSE' | 'DRAW'
     ? SpecialCard
-    : T extends 'WILD' | 'WILD DRAW'
+    : T extends 'WILD' | 'WILD_DRAW'
       ? WildCard
       : never
 export type Card = Readonly<TypedCard<Type>>
@@ -51,7 +51,7 @@ export function toCard(raw: Record<string, string | number>): Card {
     return { type: t, color: color as Color } as const
   }
 
-  if (t === 'WILD' || t === 'WILD DRAW') {
+  if (t === 'WILD' || t === 'WILD_DRAW') {
     if (raw.color !== undefined || raw.number !== undefined) {
       throw new Error('Wild card must not have color/number')
     }
@@ -62,7 +62,7 @@ export function toCard(raw: Record<string, string | number>): Card {
 }
 
 export function isColored(c: Card): c is ColoredCard {
-  return c.type !== 'WILD' && c.type !== 'WILD DRAW'
+  return c.type !== 'WILD' && c.type !== 'WILD_DRAW'
 }
 
 export class Deck implements DeckInterface {
@@ -142,7 +142,7 @@ export function createInitialDeck(): Deck {
 
   for (let i = 0; i < 4; i++) {
     deck.push({ type: 'WILD' })
-    deck.push({ type: 'WILD DRAW' })
+    deck.push({ type: 'WILD_DRAW' })
   }
 
   deck.push({ type: 'NUMBERED', color: 'BLUE', number: 0 })

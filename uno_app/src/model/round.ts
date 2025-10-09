@@ -40,7 +40,7 @@ export class Round implements RoundInterface {
     }
   }
 
-  isWild = (t: Card['type']) => t === 'WILD' || t === 'WILD DRAW'
+  isWild = (t: Card['type']) => t === 'WILD' || t === 'WILD_DRAW'
   isWildTop = () =>
     this.isWild(this.discardDeck.top()!.type) || this.isWild(this.drawDeck.top()!.type)
 
@@ -181,14 +181,14 @@ export class Round implements RoundInterface {
           return played.color === effectiveColor || played.type === 'REVERSE'
 
         case 'WILD':
-        case 'WILD DRAW':
+        case 'WILD_DRAW':
           return played.color === effectiveColor
       }
     } else {
       if (played.type === 'WILD') {
         return true
       }
-      if (played.type === 'WILD DRAW') {
+      if (played.type === 'WILD_DRAW') {
         if (effectiveColor) {
           return !hand.hasColor(effectiveColor)
         }
@@ -226,7 +226,7 @@ export class Round implements RoundInterface {
     }
 
     const playedCard: Card = hand[cardIx]
-    const isWildCard: boolean = playedCard.type == 'WILD' || playedCard.type == 'WILD DRAW'
+    const isWildCard: boolean = playedCard.type == 'WILD' || playedCard.type == 'WILD_DRAW'
 
     if (askedColor && !isWildCard) {
       throw new Error('Illegal play: Cannot ask for color on a colored card')
@@ -278,7 +278,7 @@ export class Round implements RoundInterface {
         case 'WILD':
           this.currentPlayerIndex = mod(this.currentPlayerIndex + this.direction, this.playerCount)
           break
-        case 'WILD DRAW':
+        case 'WILD_DRAW':
           const wildTarget = mod(this.currentPlayerIndex + this.direction, this.playerCount)
           this.drawTo(wildTarget, 4)
           this.currentPlayerIndex = mod(wildTarget + this.direction, this.playerCount)
@@ -413,7 +413,7 @@ export class Round implements RoundInterface {
           case 'WILD':
             sum += 50
             break
-          case 'WILD DRAW':
+          case 'WILD_DRAW':
             sum += 50
             break
         }

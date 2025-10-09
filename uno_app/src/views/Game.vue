@@ -60,7 +60,7 @@ async function onPlayCard(ix: number) {
   const card = yourHand()[ix]
   if (!card) return
   if (!vm.canPlayAt(ix)) return
-  if (card.type === 'WILD' || card.type === 'WILD DRAW') {
+  if (card.type === 'WILD' || card.type === 'WILD_DRAW') {
     showColorPicker.value = ix
   } else {
     vm.playCard(ix)
