@@ -12,22 +12,22 @@ type PublishFn = (ev: GameEvent) => void
 
 const COLORS: Color[] = ['RED', 'YELLOW', 'GREEN', 'BLUE']
 const NUMBERS: Array<{ num: number; asEnum: any }> = [
-  { num: 0, asEnum: '0' },
-  { num: 1, asEnum: '1' },
-  { num: 2, asEnum: '2' },
-  { num: 3, asEnum: '3' },
-  { num: 4, asEnum: '4' },
-  { num: 5, asEnum: '5' },
-  { num: 6, asEnum: '6' },
-  { num: 7, asEnum: '7' },
-  { num: 8, asEnum: '8' },
-  { num: 9, asEnum: '9' },
+  { num: 0, asEnum: 'N0' },
+  { num: 1, asEnum: 'N1' },
+  { num: 2, asEnum: 'N2' },
+  { num: 3, asEnum: 'N3' },
+  { num: 4, asEnum: 'N4' },
+  { num: 5, asEnum: 'N5' },
+  { num: 6, asEnum: 'N6' },
+  { num: 7, asEnum: 'N7' },
+  { num: 8, asEnum: 'N8' },
+  { num: 9, asEnum: 'N9' },
 ]
 
 function mkDeck(): Card[] {
   const deck: Card[] = []
   for (const c of COLORS) {
-    deck.push({ type: 'NUMBERED', color: c, number: '0' })
+    deck.push({ type: 'NUMBERED', color: c, number: 'N0' })
     for (const { asEnum } of NUMBERS.slice(1)) {
       deck.push({ type: 'NUMBERED', color: c, number: asEnum })
       deck.push({ type: 'NUMBERED', color: c, number: asEnum })
