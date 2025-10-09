@@ -3,7 +3,7 @@
  * https://jestjs.io/docs/configuration
  */
 
-export default  {
+export default {
   // All imported modules in your tests should be mocked automatically
   // automock: false,
 
@@ -31,7 +31,7 @@ export default  {
   // ],
 
   // Indicates which provider should be used to instrument code for coverage
-  coverageProvider: "v8",
+  coverageProvider: 'v8',
 
   // A list of reporter names that Jest uses when writing coverage reports
   // coverageReporters: [
@@ -147,10 +147,7 @@ export default  {
   //],
 
   // An array of regexp pattern strings that are matched against all test paths, matched tests are skipped
-  testPathIgnorePatterns: [
-     "\\\\node_modules\\\\",
-     "\\\\dist\\\\",
-   ],
+  testPathIgnorePatterns: ['\\\\node_modules\\\\', '\\\\dist\\\\'],
 
   // The regexp pattern or array of patterns that Jest uses to detect test files
   // testRegex: [],
@@ -181,4 +178,4 @@ export default  {
 
   // Whether to use watchman for file crawling
   // watchman: true,
-};
+}

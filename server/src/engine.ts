@@ -12,22 +12,22 @@ type PublishFn = (ev: GameEvent) => void
 
 const COLORS: Color[] = ['RED', 'YELLOW', 'GREEN', 'BLUE']
 const NUMBERS: Array<{ num: number; asEnum: any }> = [
-  { num: 0, asEnum: 'N0' },
-  { num: 1, asEnum: 'N1' },
-  { num: 2, asEnum: 'N2' },
-  { num: 3, asEnum: 'N3' },
-  { num: 4, asEnum: 'N4' },
-  { num: 5, asEnum: 'N5' },
-  { num: 6, asEnum: 'N6' },
-  { num: 7, asEnum: 'N7' },
-  { num: 8, asEnum: 'N8' },
-  { num: 9, asEnum: 'N9' },
+  { num: 0, asEnum: '0' },
+  { num: 1, asEnum: '1' },
+  { num: 2, asEnum: '2' },
+  { num: 3, asEnum: '3' },
+  { num: 4, asEnum: '4' },
+  { num: 5, asEnum: '5' },
+  { num: 6, asEnum: '6' },
+  { num: 7, asEnum: '7' },
+  { num: 8, asEnum: '8' },
+  { num: 9, asEnum: '9' },
 ]
 
 function mkDeck(): Card[] {
   const deck: Card[] = []
   for (const c of COLORS) {
-    deck.push({ type: 'NUMBERED', color: c, number: 'N0' })
+    deck.push({ type: 'NUMBERED', color: c, number: '0' })
     for (const { asEnum } of NUMBERS.slice(1)) {
       deck.push({ type: 'NUMBERED', color: c, number: asEnum })
       deck.push({ type: 'NUMBERED', color: c, number: asEnum })
@@ -58,7 +58,9 @@ export function createGame(
   cardsPerPlayer: number,
   publish: PublishFn,
 ): Game {
-  if (players.length < 2) throw new Error('Need at least 2 players')
+  if (players.length < 1) throw new Error('Need at least 1 player to create a lobby')
+  if (players.length > 4) throw new Error('Max 4 players')
+
   const id = uuid()
   const now = new Date().toISOString()
 
@@ -68,7 +70,7 @@ export function createGame(
       createdAt: now,
       targetScore,
       cardsPerPlayer,
-      players: players.map((name, i) => ({
+      players: players.map((name) => ({
         id: uuid(),
         name,
         handCount: 0,
@@ -86,7 +88,8 @@ export function createGame(
   }
 
   GAMES.set(id, runtime)
-  runtime.g.players.forEach((p, i) =>
+
+  runtime.g.players.forEach((_, i) =>
     publish({
       __typename: 'PlayerJoined',
       gameId: id,
@@ -98,24 +101,37 @@ export function createGame(
   return gameView(runtime)
 }
 
-export function getGame(gameId: string): Game {
-  const rt = GAMES.get(gameId)
-  if (!rt) throw new Error('Game not found')
-  return gameView(rt)
-}
-
-export function resetGame(gameId: string, publish: PublishFn): Game {
+export function addPlayer(gameId: string, name: string, publish: PublishFn): Game {
   const rt = must(gameId)
-  const players = rt.g.players.map((p) => p.name)
-  const target = rt.g.targetScore
-  const cpp = rt.g.cardsPerPlayer
-  GAMES.delete(gameId)
-  const g = createGame(players, target, cpp, publish)
-  return g
+  if (rt.g.currentRound) throw new Error('Cannot join: round already started')
+  if (rt.g.players.length >= 4) throw new Error('Lobby full')
+
+  const newIx = rt.g.players.length
+  rt.g.players.push({
+    id: uuid(),
+    name,
+    handCount: 0,
+    score: 0,
+    saidUno: false,
+  })
+  rt.hands.push([])
+  rt.saidUno.push(false)
+
+  syncHandCounts(rt)
+  publish({
+    __typename: 'PlayerJoined',
+    gameId: rt.g.id,
+    playerIndex: newIx,
+    player: playerView(rt, newIx),
+  })
+  publish({ __typename: 'GameUpdated', game: gameView(rt) })
+  return gameView(rt)
 }
 
 export function startRound(gameId: string, publish: PublishFn): Game {
   const rt = must(gameId)
+  if (rt.g.players.length < 2) throw new Error('Need at least 2 players to start')
+
   rt.deck = mkDeck()
   rt.discard = []
   rt.hands = rt.g.players.map(() => [])
@@ -153,6 +169,28 @@ export function startRound(gameId: string, publish: PublishFn): Game {
   publish({ __typename: 'TurnChanged', gameId: rt.g.id, playerInTurnIndex: 0 })
   publish({ __typename: 'GameUpdated', game: gameView(rt) })
   return gameView(rt)
+}
+
+export function waitingGames(): Game[] {
+  return Array.from(GAMES.values())
+    .filter((rt) => !rt.g.currentRound && rt.g.players.length < 4)
+    .map((rt) => gameView(rt))
+}
+
+export function getGame(gameId: string): Game {
+  const rt = GAMES.get(gameId)
+  if (!rt) throw new Error('Game not found')
+  return gameView(rt)
+}
+
+export function resetGame(gameId: string, publish: PublishFn): Game {
+  const rt = must(gameId)
+  const players = rt.g.players.map((p) => p.name)
+  const target = rt.g.targetScore
+  const cpp = rt.g.cardsPerPlayer
+  GAMES.delete(gameId)
+  const g = createGame(players, target, cpp, publish)
+  return g
 }
 
 export function hand(gameId: string, playerIndex: number): Card[] {

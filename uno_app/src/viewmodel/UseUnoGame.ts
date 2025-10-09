@@ -45,10 +45,10 @@ export function useUnoGame(opts: Opts) {
   }
   attachRoundListener(game.value.currentRound()!)
   const origStartNewRound = (game.value as any).startNewRound.bind(game.value)
-    ; (game.value as any).startNewRound = () => {
-      origStartNewRound()
-      attachRoundListener(game.value.currentRound()!)
-    }
+  ;(game.value as any).startNewRound = () => {
+    origStartNewRound()
+    attachRoundListener(game.value.currentRound()!)
+  }
 
   // read
   function round() {
@@ -151,16 +151,23 @@ export function useUnoGame(opts: Opts) {
     let best: Color = 'RED'
     let bestN = -1
     for (const k of Object.keys(counts) as Color[]) {
-      if (counts[k] > bestN) { best = k; bestN = counts[k] }
+      if (counts[k] > bestN) {
+        best = k
+        bestN = counts[k]
+      }
     }
     return best
   }
 
-  // try to accuse anybody 
+  // try to accuse anybody
   function botTryAccuse(ix: number) {
     for (let t = 0; t < opts.players.length; t++) {
       if (t === ix) continue
-      try { accuse(ix, t) } catch { /* ignore */ }
+      try {
+        accuse(ix, t)
+      } catch {
+        /* ignore */
+      }
     }
   }
   //ptt bot:
@@ -173,9 +180,9 @@ export function useUnoGame(opts: Opts) {
     if (ix === undefined || !isBot(ix)) return false
 
     // slight delay to feel alive
-    await new Promise(res => setTimeout(res, 850))
+    await new Promise((res) => setTimeout(res, 850))
 
-    // opportunistic accusation before acting, proably bot should watch this outside of its turn too? 
+    // opportunistic accusation before acting, proably bot should watch this outside of its turn too?
     botTryAccuse(ix)
 
     // pick first legal card, else draw
@@ -185,7 +192,10 @@ export function useUnoGame(opts: Opts) {
       if (r.canPlay(i)) {
         const card = hand[i]
         if (card.type === 'WILD' || card.type === 'WILD DRAW') {
-          setMessage('Bot plays', `Bot ${opts.players[ix]} plays ${card.type} and chooses ${chooseWildColor(ix)}`)
+          setMessage(
+            'Bot plays',
+            `Bot ${opts.players[ix]} plays ${card.type} and chooses ${chooseWildColor(ix)}`,
+          )
           playCard(i, chooseWildColor(ix))
         } else {
           playCard(i)
@@ -200,7 +210,7 @@ export function useUnoGame(opts: Opts) {
 
     // say UNO if on 1 card forget 4/10
     if (handCountOf(ix) === 1) {
-      if (Math.random() > 0.40) {
+      if (Math.random() > 0.4) {
         setMessage('Bot says UNO!', `Bot ${opts.players[ix]} says UNO!`)
         sayUno(ix)
       }
@@ -213,12 +223,30 @@ export function useUnoGame(opts: Opts) {
     // state
     game,
     // reads
-    round, playerInTurn, hasEnded, winner, isGameOver, gameWinner, scoreOf, topDiscard, drawPileSize, handOf, handCountOf, canPlayAt,
+    round,
+    playerInTurn,
+    hasEnded,
+    winner,
+    isGameOver,
+    gameWinner,
+    scoreOf,
+    topDiscard,
+    drawPileSize,
+    handOf,
+    handCountOf,
+    canPlayAt,
     // writes
-    playCard, draw, sayUno, accuse,
+    playCard,
+    draw,
+    sayUno,
+    accuse,
     // bot play
     botTakeTurn,
     // pop-up message
-    showPopUpMessage, popUpMessage, popUpTitle, setMessage, clearMessage,
+    showPopUpMessage,
+    popUpMessage,
+    popUpTitle,
+    setMessage,
+    clearMessage,
   }
 }

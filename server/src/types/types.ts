@@ -1,7 +1,7 @@
 export type UUID = string
 export type Color = 'RED' | 'YELLOW' | 'GREEN' | 'BLUE'
 export type CardType = 'NUMBERED' | 'SKIP' | 'REVERSE' | 'DRAW' | 'WILD' | 'WILD_DRAW'
-export type CardNumber = 'N0' | 'N1' | 'N2' | 'N3' | 'N4' | 'N5' | 'N6' | 'N7' | 'N8' | 'N9'
+export type CardNumber = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9'
 
 export type NumberCard = { type: 'NUMBERED'; color: Color; number: CardNumber }
 export type SpecialCard = { type: 'SKIP' | 'REVERSE' | 'DRAW'; color: Color }

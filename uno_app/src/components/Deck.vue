@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 defineProps<{ size?: 'sm' | 'md' | 'lg' }>()
 </script>
 

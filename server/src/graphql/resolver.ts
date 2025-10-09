@@ -9,9 +9,11 @@ import {
   accuseUno,
   resetGame,
   createGame,
+  addPlayer,
+  waitingGames,
 } from '../engine'
 import { publishEvent, publishUpdate, eventsTopic, updatesTopic, pubsub } from '../pubsub'
-import { GameEvent, Color } from 'src/types/types'
+import { GameEvent, Color } from '../types/types'
 import { DateTimeResolver, UUIDResolver } from 'graphql-scalars'
 
 export const resolvers = {
@@ -30,6 +32,8 @@ export const resolvers = {
       hand(gameId, playerIndex),
     playableIndexes: (_: any, { gameId, playerIndex }: { gameId: string; playerIndex: number }) =>
       playableIndexes(gameId, playerIndex),
+
+    waitingGames: () => waitingGames(),
   },
 
   Mutation: {
@@ -39,12 +43,27 @@ export const resolvers = {
     ) => {
       const target = input.targetScore ?? 500
       const cpp = input.cardsPerPlayer ?? 7
-      const g = createGame(input.players, target, cpp, (ev: GameEvent) => {
-        publishEvent(g.id, ev)
-        if (ev.__typename === 'GameUpdated') publishUpdate(g.id, ev.game)
-      })
-      return { game: g }
+
+      const publisher = (ev: GameEvent) => {
+        const id = (ev as any).gameId ?? ((ev as any).game && (ev as any).game.id)
+
+        if (!id) return
+
+        publishEvent(id, ev)
+        if (ev.__typename === 'GameUpdated') {
+          publishUpdate(id, (ev as any).game)
+        }
+      }
+
+      const game = createGame(input.players, target, cpp, publisher)
+      return { game }
     },
+
+    addPlayer: (_: any, { gameId, name }: { gameId: string; name: string }) =>
+      addPlayer(gameId, name, (ev) => {
+        publishEvent(gameId, ev)
+        if (ev.__typename === 'GameUpdated') publishUpdate(gameId, ev.game)
+      }),
 
     startRound: (_: any, { input }: { input: { gameId: string } }) =>
       startRound(input.gameId, (ev) => {

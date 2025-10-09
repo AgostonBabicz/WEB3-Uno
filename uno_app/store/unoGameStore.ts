@@ -165,7 +165,10 @@ export const useUnoGameStore = defineStore('unoGame', () => {
     let best: Color = 'RED'
     let bestN = -1
     for (const k of Object.keys(counts) as Color[]) {
-      if (counts[k] > bestN) { best = k; bestN = counts[k] }
+      if (counts[k] > bestN) {
+        best = k
+        bestN = counts[k]
+      }
     }
     return best
   }
@@ -175,9 +178,15 @@ export const useUnoGameStore = defineStore('unoGame', () => {
     for (let t = 0; t < opts.players.length; t++) {
       if (t === ix) continue
       try {
-        accuse(ix, t) ? setMessage('You are accused!', `${opts.players[ix]} accuses ${opts.players[t]} of not saying UNO! Now Draw 4`) : null
+        accuse(ix, t)
+          ? setMessage(
+              'You are accused!',
+              `${opts.players[ix]} accuses ${opts.players[t]} of not saying UNO! Now Draw 4`,
+            )
+          : null
+      } catch (e) {
+        /* ignore, just means bot was wrong */
       }
-      catch (e) { /* ignore, just means bot was wrong */}
     }
   }
   async function botTakeTurn(): Promise<boolean> {
@@ -187,7 +196,7 @@ export const useUnoGameStore = defineStore('unoGame', () => {
     if (ix === undefined || !isBot(ix)) return false
 
     //changed the delay to vary
-    await new Promise(res => setTimeout(res, randomDelay()))
+    await new Promise((res) => setTimeout(res, randomDelay()))
     botTryAccuse(ix)
 
     const hand = handOf(ix)
@@ -196,8 +205,10 @@ export const useUnoGameStore = defineStore('unoGame', () => {
       if (r.canPlay(i)) {
         const card = hand[i]
         if (card.type === 'WILD' || card.type === 'WILD DRAW') {
-
-          setMessage('Bot plays', `Bot ${optsRef.value?.players[ix]} plays ${card.type} and chooses ${chooseWildColor(ix)}`)
+          setMessage(
+            'Bot plays',
+            `Bot ${optsRef.value?.players[ix]} plays ${card.type} and chooses ${chooseWildColor(ix)}`,
+          )
           playCard(i, chooseWildColor(ix))
         } else {
           playCard(i)
@@ -212,7 +223,7 @@ export const useUnoGameStore = defineStore('unoGame', () => {
 
     // 50% chance to say UNO when having one card left
     if (handCountOf(ix) === 1) {
-      if (Math.random() > 0.50) {
+      if (Math.random() > 0.5) {
         setMessage('Bot says UNO!', `Bot ${optsRef.value?.players[ix]} says UNO!`)
         sayUno(ix)
       }
@@ -227,11 +238,30 @@ export const useUnoGameStore = defineStore('unoGame', () => {
   }
 
   return {
-    init, reset,
+    init,
+    reset,
     game,
-    round, playerInTurn, hasEnded, winner, isGameOver, gameWinner, scoreOf, topDiscard, drawPileSize, handOf, handCountOf, canPlayAt,
-    playCard, draw, sayUno, accuse,
+    round,
+    playerInTurn,
+    hasEnded,
+    winner,
+    isGameOver,
+    gameWinner,
+    scoreOf,
+    topDiscard,
+    drawPileSize,
+    handOf,
+    handCountOf,
+    canPlayAt,
+    playCard,
+    draw,
+    sayUno,
+    accuse,
     botTakeTurn,
-    showPopUpMessage, popUpMessage, popUpTitle, setMessage, clearMessage,
+    showPopUpMessage,
+    popUpMessage,
+    popUpTitle,
+    setMessage,
+    clearMessage,
   }
 })

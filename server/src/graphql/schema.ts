@@ -19,16 +19,16 @@ export const typeDefs = gql`
     WILD_DRAW
   }
   enum CardNumber {
-    N0
-    N1
-    N2
-    N3
-    N4
-    N5
-    N6
-    N7
-    N8
-    N9
+    0
+    1
+    2
+    3
+    4
+    5
+    6
+    7
+    8
+    9
   }
 
   type Card {
@@ -105,7 +105,7 @@ export const typeDefs = gql`
   type Mutation {
     createGame(input: CreateGameInput!): CreateGamePayload!
     startRound(input: StartRoundInput!): Game!
-
+    addPlayer(gameId: UUID!, name: String!): Game!
     playCard(input: PlayCardInput!): Game!
     drawCard(input: DrawCardInput!): Game!
     sayUno(input: SayUnoInput!): Game!
@@ -120,6 +120,8 @@ export const typeDefs = gql`
     hand(gameId: UUID!, playerIndex: Int!): [Card!]!
 
     playableIndexes(gameId: UUID!, playerIndex: Int!): [Int!]!
+
+    waitingGames: [Game!]!
   }
 
   union GameEvent =

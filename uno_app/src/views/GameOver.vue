@@ -14,7 +14,7 @@ function goHome() {
 
 let confettiCanvas: HTMLCanvasElement | null = null
 let ctx: CanvasRenderingContext2D | null = null
-let confetti: {x:number,y:number,r:number,c:string,s:number}[] = []
+let confetti: { x: number; y: number; r: number; c: string; s: number }[] = []
 let anim: number
 
 // PTT CONFETTI STUFF MAN IDK WHAT IM DOING
@@ -26,8 +26,8 @@ function initConfetti() {
     x: Math.random() * confettiCanvas!.width,
     y: Math.random() * confettiCanvas!.height - confettiCanvas!.height,
     r: Math.random() * 6 + 4,
-    c: ['#e11d2e','#2563eb','#16a34a','#facc15'][Math.floor(Math.random()*4)],
-    s: Math.random() * 2 + 1
+    c: ['#e11d2e', '#2563eb', '#16a34a', '#facc15'][Math.floor(Math.random() * 4)],
+    s: Math.random() * 2 + 1,
   }))
 }
 
@@ -37,7 +37,7 @@ function drawConfetti() {
   confetti.forEach((p) => {
     if (!ctx) return
     ctx.beginPath()
-    ctx.arc(p.x, p.y, p.r, 0, Math.PI*2)
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
     ctx.fillStyle = p.c
     ctx.fill()
   })
@@ -78,7 +78,9 @@ onBeforeUnmount(() => {
     <canvas id="confetti"></canvas>
     <section class="game-over-card">
       <h1>🎉 Game Over 🎉</h1>
-      <p class="winner">Winner: <strong>{{ props.winner }}</strong></p>
+      <p class="winner">
+        Winner: <strong>{{ props.winner }}</strong>
+      </p>
       <button class="btn home-btn" @click="goHome">Back to Home</button>
     </section>
   </main>

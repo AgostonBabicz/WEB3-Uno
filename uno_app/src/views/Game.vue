@@ -28,7 +28,7 @@ vm.init({ players, targetScore: props.targetScore, cardsPerPlayer: props.cardsPe
 const { setMessage, clearMessage } = vm
 const { showPopUpMessage, popUpMessage, popUpTitle } = storeToRefs(vm)
 
-const botIndices = bots.map(n => players.indexOf(n))
+const botIndices = bots.map((n) => players.indexOf(n))
 const meIx = players.indexOf(me)
 
 // helpers
@@ -85,10 +85,12 @@ function onUno() {
   vm.sayUno(meIx)
 }
 function accuseOpponent(opIx: number) {
-  try { vm.accuse(meIx, opIx) } catch {}
+  try {
+    vm.accuse(meIx, opIx)
+  } catch {}
 }
 
-// PTT type bot tomfoolery 
+// PTT type bot tomfoolery
 // Minimal bot loop: keep taking bot turns until it's your turn or round ends
 let botsBusy = false
 async function pumpBots() {
@@ -108,7 +110,9 @@ async function pumpBots() {
 }
 
 //actually kick off the bot loop, PTT is cracked out this was copilot
-onMounted(() => { void pumpBots() })
+onMounted(() => {
+  void pumpBots()
+})
 </script>
 
 <!-- Full PTT below-->
@@ -149,13 +153,17 @@ onMounted(() => { void pumpBots() })
         <CardComponent
           v-if="vm.topDiscard()"
           :type="vm.topDiscard()!.type"
-          :color="(
+          :color="
             vm.topDiscard()!.type === 'NUMBERED' ||
             vm.topDiscard()!.type === 'SKIP' ||
             vm.topDiscard()!.type === 'REVERSE' ||
             vm.topDiscard()!.type === 'DRAW'
-          ) ? (vm.topDiscard() as any).color : undefined"
-          :number="vm.topDiscard()!.type === 'NUMBERED' ? (vm.topDiscard() as any).number : undefined"
+              ? (vm.topDiscard() as any).color
+              : undefined
+          "
+          :number="
+            vm.topDiscard()!.type === 'NUMBERED' ? (vm.topDiscard() as any).number : undefined
+          "
         />
       </div>
       <div class="pile draw" @click="onDraw" title="Draw">
@@ -181,12 +189,14 @@ onMounted(() => { void pumpBots() })
         >
           <CardComponent
             :type="card.type"
-            :color="(
+            :color="
               card.type === 'NUMBERED' ||
               card.type === 'SKIP' ||
               card.type === 'REVERSE' ||
               card.type === 'DRAW'
-            ) ? (card as any).color : undefined"
+                ? (card as any).color
+                : undefined
+            "
             :number="card.type === 'NUMBERED' ? (card as any).number : undefined"
             class="hand-card"
           />
@@ -202,7 +212,13 @@ onMounted(() => { void pumpBots() })
     <!-- WILD color picker -->
     <div v-if="showColorPicker !== null" class="color-picker-backdrop">
       <div class="color-picker">
-        <button v-for="c in COLORS" :key="c" class="color-chip" :data-color="c.toLowerCase()" @click="pickColor(c)">
+        <button
+          v-for="c in COLORS"
+          :key="c"
+          class="color-chip"
+          :data-color="c.toLowerCase()"
+          @click="pickColor(c)"
+        >
           {{ c }}
         </button>
       </div>

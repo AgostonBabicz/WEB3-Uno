@@ -4,10 +4,7 @@
     "outDir": "./dist/",
     "sourceMap": true,
     "target": "ES2022",
-    "lib": [
-      "ES2022",
-      "DOM"
-    ],
+    "lib": ["ES2022", "DOM"],
     "moduleResolution": "Node",
     "module": "esnext"
   }
