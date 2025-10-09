@@ -6,8 +6,14 @@ const props = defineProps<{
   color?: Color
   number?: CardNumber
 }>()
-</script>
 
+function numberLabel(n?: CardNumber | string | number): string {
+  if (n == null) return ''
+  const s = String(n)
+  return s.startsWith('N') ? s.slice(1) : s
+}
+
+</script>
 <template>
   <div class="uno-card" :class="color ? color.toLowerCase() : 'wild'">
     <div class="oval"></div>
@@ -15,10 +21,10 @@ const props = defineProps<{
     <span class="corner top-left">
       {{
         type === 'NUMBERED'
-          ? number
+          ? numberLabel(props.number)
           : type === 'DRAW'
             ? '+2'
-            : type === 'WILD DRAW'
+            : type === 'WILD_DRAW'
               ? '+4'
               : type === 'REVERSE'
                 ? '↺'
@@ -30,14 +36,14 @@ const props = defineProps<{
 
     <span
       class="main"
-      :class="[type !== 'NUMBERED' && type !== 'WILD' && type !== 'WILD DRAW' ? 'symbol' : '']"
+      :class="[type !== 'NUMBERED' && type !== 'WILD' && type !== 'WILD_DRAW' ? 'symbol' : '']"
     >
       {{
         type === 'NUMBERED'
-          ? number
+          ? numberLabel(props.number)
           : type === 'DRAW'
             ? '+2'
-            : type === 'WILD DRAW'
+            : type === 'WILD_DRAW'
               ? '+4'
               : type === 'REVERSE'
                 ? '↺'
@@ -50,10 +56,10 @@ const props = defineProps<{
     <span class="corner bottom-right">
       {{
         type === 'NUMBERED'
-          ? number
+          ? numberLabel(props.number)
           : type === 'DRAW'
             ? '+2'
-            : type === 'WILD DRAW'
+            : type === 'WILD_DRAW'
               ? '+4'
               : type === 'REVERSE'
                 ? '↺'

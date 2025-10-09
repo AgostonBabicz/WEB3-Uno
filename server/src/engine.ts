@@ -1,54 +1,14 @@
 import { v4 as uuid } from 'uuid'
-import { GameEvent, Color, Card, Game, Round, Player, GameRuntime } from './types/types'
+import { Color, Card, Game, GameRuntime, PublishFn } from './types/types'
 import { advanceTurn } from './helpers/advanceTurn'
 import { canPlay } from './helpers/canPlay'
-import { maybeGameWinner } from './helpers/maybeGameWinner'
 import { refeed } from './helpers/refeed'
 import { syncHandCounts } from './helpers/syncHandCounts'
 import { playerView, gameView } from './helpers/views'
 import { assertTurn } from './helpers/assertTurn'
-
-type PublishFn = (ev: GameEvent) => void
-
-const COLORS: Color[] = ['RED', 'YELLOW', 'GREEN', 'BLUE']
-const NUMBERS: Array<{ num: number; asEnum: any }> = [
-  { num: 0, asEnum: 'N0' },
-  { num: 1, asEnum: 'N1' },
-  { num: 2, asEnum: 'N2' },
-  { num: 3, asEnum: 'N3' },
-  { num: 4, asEnum: 'N4' },
-  { num: 5, asEnum: 'N5' },
-  { num: 6, asEnum: 'N6' },
-  { num: 7, asEnum: 'N7' },
-  { num: 8, asEnum: 'N8' },
-  { num: 9, asEnum: 'N9' },
-]
-
-function mkDeck(): Card[] {
-  const deck: Card[] = []
-  for (const c of COLORS) {
-    deck.push({ type: 'NUMBERED', color: c, number: 'N0' })
-    for (const { asEnum } of NUMBERS.slice(1)) {
-      deck.push({ type: 'NUMBERED', color: c, number: asEnum })
-      deck.push({ type: 'NUMBERED', color: c, number: asEnum })
-    }
-    deck.push({ type: 'SKIP', color: c })
-    deck.push({ type: 'SKIP', color: c })
-    deck.push({ type: 'REVERSE', color: c })
-    deck.push({ type: 'REVERSE', color: c })
-    deck.push({ type: 'DRAW', color: c })
-    deck.push({ type: 'DRAW', color: c })
-  }
-  for (let i = 0; i < 4; i++) {
-    deck.push({ type: 'WILD' })
-    deck.push({ type: 'WILD_DRAW' })
-  }
-  for (let i = deck.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[deck[i], deck[j]] = [deck[j], deck[i]]
-  }
-  return deck
-}
+import { beginRound } from './helpers/beginRound'
+import { applyCardEffects } from './helpers/applyCardEffects'
+import { finishRoundIfAny } from './helpers/finishRoundIfAny'
 
 const GAMES = new Map<string, GameRuntime>()
 
@@ -131,43 +91,7 @@ export function addPlayer(gameId: string, name: string, publish: PublishFn): Gam
 export function startRound(gameId: string, publish: PublishFn): Game {
   const rt = must(gameId)
   if (rt.g.players.length < 2) throw new Error('Need at least 2 players to start')
-
-  rt.deck = mkDeck()
-  rt.discard = []
-  rt.hands = rt.g.players.map(() => [])
-  rt.saidUno = rt.g.players.map(() => false)
-  rt.direction = 'CW'
-
-  for (let i = 0; i < rt.g.cardsPerPlayer; i++) {
-    for (let p = 0; p < rt.g.players.length; p++) {
-      rt.hands[p].push(rt.deck.shift()!)
-    }
-  }
-  const first = rt.deck.shift()!
-  rt.discard.push(first)
-
-  const round: Round = {
-    id: uuid(),
-    playerInTurnIndex: 0,
-    discardTop: first,
-    drawPileSize: rt.deck.length,
-    currentColor:
-      first.type === 'NUMBERED' ||
-      first.type === 'SKIP' ||
-      first.type === 'REVERSE' ||
-      first.type === 'DRAW'
-        ? first.color
-        : null,
-    direction: rt.direction,
-    hasEnded: false,
-  }
-
-  rt.g.currentRound = round
-  syncHandCounts(rt)
-
-  publish({ __typename: 'GameStarted', gameId: rt.g.id, game: gameView(rt) })
-  publish({ __typename: 'TurnChanged', gameId: rt.g.id, playerInTurnIndex: 0 })
-  publish({ __typename: 'GameUpdated', game: gameView(rt) })
+  beginRound(rt, 0, publish)
   return gameView(rt)
 }
 
@@ -233,31 +157,36 @@ export function playCard(
 ): Game {
   const rt = must(gameId)
   assertTurn(rt, playerIndex)
+  const r = rt.g.currentRound
+  if (!r) throw new Error('Round not started')
+
   const hand = rt.hands[playerIndex]
   const card = hand[cardIndex]
   if (!card) throw new Error('Invalid cardIndex')
 
   const top = rt.discard[rt.discard.length - 1]
-  const curColor = rt.g.currentRound?.currentColor ?? null
-  if (!canPlay(card, top, curColor)) {
-    throw new Error('Card not playable')
-  }
+  const curColor = r.currentColor ?? null
+  if (!canPlay(card, top, curColor)) throw new Error('Card not playable')
 
-  // remove from hand
+  // play it
   hand.splice(cardIndex, 1)
   rt.discard.push(card)
 
-  // color handling
+  // set color
   if (card.type === 'WILD' || card.type === 'WILD_DRAW') {
     if (!askedColor) throw new Error('askedColor required for wild')
-    rt.g.currentRound!.currentColor = askedColor
+    r.currentColor = askedColor
   } else if ('color' in card) {
-    rt.g.currentRound!.currentColor = card.color
+    r.currentColor = (card as any).color as Color
   }
 
-  // TODO: apply SKIP, REVERSE, DRAW and WILD_DRAW effects properly
-  // For now only normal advance
+  // sync visible round state
+  r.discardTop = card
+  r.drawPileSize = rt.deck.length
+  r.direction = rt.direction
   syncHandCounts(rt)
+
+  // notify play
   publish({
     __typename: 'CardPlayed',
     gameId: rt.g.id,
@@ -266,18 +195,16 @@ export function playCard(
     askedColor: askedColor ?? null,
   })
 
-  // check UNO end
-  if (rt.hands[playerIndex].length === 0) {
-    rt.g.currentRound!.hasEnded = true
-    const winnerIndex = playerIndex
-    rt.g.winnerIndex = maybeGameWinner(rt, winnerIndex)
-    const pointsAwarded = 0 // TODO: compute points by remaining cards
-    const scores = rt.g.players.map((p) => p.score)
-    publish({ __typename: 'RoundEnded', gameId: rt.g.id, winnerIndex, pointsAwarded, scores })
-    if (rt.g.winnerIndex !== null) {
-      publish({ __typename: 'GameEnded', gameId: rt.g.id, winnerIndex: rt.g.winnerIndex, scores })
-    }
-  } else {
+  // apply card effects, also returns how many times to advance the turn
+  const advances = applyCardEffects(rt, r, playerIndex, card, askedColor, publish)
+
+  // round end?
+  if (finishRoundIfAny(rt, playerIndex, publish)) {
+    return gameView(rt)
+  }
+
+  // otherwise advance the turn N times
+  for (let i = 0; i < advances; i++) {
     advanceTurn(rt, publish)
   }
 
@@ -303,8 +230,7 @@ export function accuseUno(
   const rt = must(gameId)
   const success = rt.hands[accusedIndex].length === 1 && !rt.saidUno[accusedIndex]
   if (success) {
-    // penalty draw 2
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 4; i++) {
       if (rt.deck.length === 0) refeed(rt)
       const c = rt.deck.shift()
       if (c) rt.hands[accusedIndex].push(c)

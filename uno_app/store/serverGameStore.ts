@@ -17,6 +17,7 @@ import {
   WAITING_GAMES,
 } from '../src/graphql/ops'
 import { Color } from '../src/model/deck'
+import router from '../src/router'
 
 type Opts = {
   meName: string
@@ -30,6 +31,7 @@ export const useServerGameStore = defineStore('serverGame', () => {
   const game = ref<any | null>(null)
   const myHand = ref<any[]>([])
   const playable = ref<number[]>([])
+  const navigatedGameOver = ref(false)
 
   let updatesSub: { unsubscribe: () => void } | null = null
   let eventsSub: { unsubscribe: () => void } | null = null
@@ -51,6 +53,7 @@ export const useServerGameStore = defineStore('serverGame', () => {
     gameId.value = g.id
     meIndex.value = 0
     game.value = g
+    navigatedGameOver.value = false
 
     await subscribeAll()
   }
@@ -94,7 +97,6 @@ export const useServerGameStore = defineStore('serverGame', () => {
   async function startRound() {
   if (!gameId.value) return
   
-  console.log('Starting round for game', gameId.value)
   const { data: gq } = await apollo.query({
     query: GET_GAME,
     variables: { gameId: gameId.value },
@@ -193,34 +195,57 @@ export const useServerGameStore = defineStore('serverGame', () => {
     })
   }
 
+  function goGameOverIfDone(g: any) {
+  if (!g) return
+  if (navigatedGameOver.value) return
+  const winnerIx = g.winnerIndex
+  if (winnerIx == null) return
+  const winnerName = g.players?.[winnerIx]?.name ?? 'Unknown'
+  navigatedGameOver.value = true
+  router.push({ name: 'GameOver', query: { winner: winnerName } })
+}
+
   // --------- Subscriptions ----------
 
   async function subscribeAll() {
-    if (!gameId.value) return
-    updatesSub?.unsubscribe()
-    eventsSub?.unsubscribe()
+  if (!gameId.value) return
+  updatesSub?.unsubscribe()
+  eventsSub?.unsubscribe()
 
-    updatesSub = apollo
-      .subscribe({ query: SUB_UPDATES, variables: { gameId: gameId.value } })
-      .subscribe({
-        next: async ({ data }: any) => {
-          if (data?.gameUpdates) {
-            game.value = data.gameUpdates
-            await refreshMyHand()
+  updatesSub = apollo
+    .subscribe({ query: SUB_UPDATES, variables: { gameId: gameId.value } })
+    .subscribe({
+      next: async ({ data }: any) => {
+        const g = data?.gameUpdates
+        if (g) {
+          game.value = g
+          goGameOverIfDone(g)         
+          await refreshMyHand()
+        }
+      },
+      error: () => {},
+    })
+
+  eventsSub = apollo
+    .subscribe({ query: SUB_EVENTS, variables: { gameId: gameId.value } })
+    .subscribe({
+      next: ({ data }: any) => {
+        const ev = data?.gameEvents
+        if (!ev) return
+        // optional: react to the event stream too
+        if (ev.__typename === 'GameEnded') {
+          const winnerIx = ev.winnerIndex
+          const winnerName = game.value?.players?.[winnerIx]?.name ?? 'Unknown'
+          if (!navigatedGameOver.value) {
+            navigatedGameOver.value = true
+            router.push({ name: 'GameOver', query: { winner: winnerName } })
           }
-        },
-        error: () => {},
-      })
+        }
+      },
+      error: () => {},
+    })
+}
 
-    eventsSub = apollo
-      .subscribe({ query: SUB_EVENTS, variables: { gameId: gameId.value } })
-      .subscribe({
-        next: ({ data }: any) => {
-          console.log('event', data?.gameEvents?.__typename)
-        },
-        error: () => {},
-      })
-  }
 
   const playerInTurn = computed(() => game.value?.currentRound?.playerInTurnIndex ?? null)
   const hasEnded = computed(() => !!game.value?.currentRound?.hasEnded)

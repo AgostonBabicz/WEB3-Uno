@@ -6,7 +6,8 @@
     "dev": "ts-node src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc -p tsconfig.json",
-    "start": "node .build/src/index.js"
+    "start": "node .build/src/index.js",
+    "format": "npx prettier --write ."
   },
   "keywords": [],
   "author": "",

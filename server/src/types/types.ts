@@ -83,3 +83,5 @@ export type GameEvent =
   | ({ __typename: 'RoundEnded' } & RoundEndedEvt)
   | ({ __typename: 'GameEnded' } & GameEndedEvt)
   | ({ __typename: 'GameUpdated' } & GameUpdatedEvt)
+
+export type PublishFn = (ev: GameEvent) => void

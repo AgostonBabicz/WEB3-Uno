@@ -9,7 +9,6 @@ import { useServerGameStore } from '../../store/serverGameStore'
 const route = useRoute()
 const store = useServerGameStore()
 const showColorPicker = ref<number | null>(null)
-const COLORS: Color[] = ['RED', 'YELLOW', 'GREEN', 'BLUE']
 
 const players = computed(() => store.game?.players ?? [])
 const meIx = computed(() => store.meIndex ?? 0)
@@ -53,8 +52,6 @@ async function onStartRound() {
 
 onMounted(async () => {
   const id = (route.query.gameId as string) || ''
-  // if someone navigates directly back here with gameId present,
-  // ensure subscriptions are active and hand is fetched
   if (id && store.gameId === id) {
     await store.refreshMyHand().catch(() => {})
   }
