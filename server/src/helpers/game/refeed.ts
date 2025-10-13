@@ -1,4 +1,4 @@
-import { GameRuntime } from '../types/types'
+import { GameRuntime } from '../../types/types'
 
 export function refeed(rt: GameRuntime) {
   if (rt.discard.length <= 1) return

@@ -12,7 +12,6 @@ function numberLabel(n?: CardNumber | string | number): string {
   const s = String(n)
   return s.startsWith('N') ? s.slice(1) : s
 }
-
 </script>
 <template>
   <div class="uno-card" :class="color ? color.toLowerCase() : 'wild'">

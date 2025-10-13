@@ -191,7 +191,7 @@ export function useUnoGame(opts: Opts) {
     for (let i = 0; i < hand.length; i++) {
       if (r.canPlay(i)) {
         const card = hand[i]
-        if (card.type === 'WILD' || card.type === 'WILD DRAW') {
+        if (card.type === 'WILD' || card.type === 'WILD_DRAW') {
           setMessage(
             'Bot plays',
             `Bot ${opts.players[ix]} plays ${card.type} and chooses ${chooseWildColor(ix)}`,

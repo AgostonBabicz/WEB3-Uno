@@ -1,4 +1,4 @@
-import { GameRuntime, Round, Card, Color, PublishFn } from '../types/types'
+import { GameRuntime, Round, Card, Color, PublishFn } from '../../types/types'
 import { drawN } from './drawN'
 import { nextPlayerIndex } from './nextPlayerIndex'
 

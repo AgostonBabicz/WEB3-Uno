@@ -1,6 +1,6 @@
 import gql from 'graphql-tag'
 
-export const typeDefs = gql`
+export const gameSchema = gql`
   scalar UUID
   scalar DateTime
 
@@ -69,6 +69,7 @@ export const typeDefs = gql`
     targetScore: Int = 500
     cardsPerPlayer: Int = 7
     players: [String!]!
+    userId: UUID!
   }
 
   type CreateGamePayload {
@@ -77,6 +78,7 @@ export const typeDefs = gql`
 
   input StartRoundInput {
     gameId: UUID!
+    userId: UUID!
   }
 
   input PlayCardInput {
@@ -84,28 +86,32 @@ export const typeDefs = gql`
     playerIndex: Int!
     cardIndex: Int!
     askedColor: Color
+    userId: UUID!
   }
 
   input DrawCardInput {
     gameId: UUID!
     playerIndex: Int!
+    userId: UUID!
   }
 
   input SayUnoInput {
     gameId: UUID!
     playerIndex: Int!
+    userId: UUID!
   }
 
   input AccuseUnoInput {
     gameId: UUID!
     accuserIndex: Int!
     accusedIndex: Int!
+    userId: UUID!
   }
 
   type Mutation {
     createGame(input: CreateGameInput!): CreateGamePayload!
     startRound(input: StartRoundInput!): Game!
-    addPlayer(gameId: UUID!, name: String!): Game!
+    addPlayer(gameId: UUID!, name: String!, userId: UUID!): Game!
     playCard(input: PlayCardInput!): Game!
     drawCard(input: DrawCardInput!): Game!
     sayUno(input: SayUnoInput!): Game!

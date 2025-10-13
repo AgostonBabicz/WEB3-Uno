@@ -460,7 +460,7 @@
   font-weight: 900;
   font-size: 1.2rem;
   cursor: pointer;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
   transition: transform 0.1s ease;
 }
 

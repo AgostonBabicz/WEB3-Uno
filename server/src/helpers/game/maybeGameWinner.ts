@@ -1,4 +1,4 @@
-import { GameRuntime } from '../types/types'
+import { GameRuntime } from '../../types/types'
 
 export function maybeGameWinner(rt: GameRuntime, roundWinner: number): number | null {
   const target = rt.g.targetScore ?? 500

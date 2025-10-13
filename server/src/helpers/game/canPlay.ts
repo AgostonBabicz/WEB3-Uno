@@ -1,4 +1,4 @@
-import { Card, Color } from '../types/types'
+import { Card, Color } from '../../types/types'
 
 export function canPlay(card: Card, top: Card | undefined, currentColor: Color | null): boolean {
   if (!top) return true

@@ -24,8 +24,8 @@ export const CREATE_GAME = gql`
 `
 
 export const ADD_PLAYER = gql`
-  mutation AddPlayer($gameId: UUID!, $name: String!) {
-    addPlayer(gameId: $gameId, name: $name) {
+  mutation AddPlayer($gameId: UUID!, $name: String!, $userId: UUID!) {
+    addPlayer(gameId: $gameId, name: $name, userId: $userId) {
       id
       players {
         id

@@ -1,6 +1,6 @@
-import { COLORS } from "../model/colors"
-import { NUMBERS } from "../model/numbers"
-import { Card } from "../types/types"
+import { COLORS } from '../../models/colors'
+import { NUMBERS } from '../../models/numbers'
+import { Card } from '../../types/types'
 
 export function mkDeck(): Card[] {
   const deck: Card[] = []

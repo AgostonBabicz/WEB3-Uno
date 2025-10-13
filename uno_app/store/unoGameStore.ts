@@ -19,7 +19,6 @@ type GameLike = {
   score: (ix: number) => number
 }
 
-// basically like UseUnoGame but adapted to Pinia store style
 export const useUnoGameStore = defineStore('unoGame', () => {
   const showPopUpMessage = ref<boolean | null>(null)
   const popUpMessage = ref<string | null>(null)
@@ -204,7 +203,7 @@ export const useUnoGameStore = defineStore('unoGame', () => {
     for (let i = 0; i < hand.length; i++) {
       if (r.canPlay(i)) {
         const card = hand[i]
-        if (card.type === 'WILD' || card.type === 'WILD DRAW') {
+        if (card.type === 'WILD' || card.type === 'WILD_DRAW') {
           setMessage(
             'Bot plays',
             `Bot ${optsRef.value?.players[ix]} plays ${card.type} and chooses ${chooseWildColor(ix)}`,

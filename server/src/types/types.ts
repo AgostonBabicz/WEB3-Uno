@@ -1,6 +1,8 @@
 export type UUID = string
 export type Color = 'RED' | 'YELLOW' | 'GREEN' | 'BLUE'
 export type CardType = 'NUMBERED' | 'SKIP' | 'REVERSE' | 'DRAW' | 'WILD' | 'WILD_DRAW'
+
+// CardNumber uses 'N' prefix to avoid starting with a digit
 export type CardNumber = 'N0' | 'N1' | 'N2' | 'N3' | 'N4' | 'N5' | 'N6' | 'N7' | 'N8' | 'N9'
 
 export type NumberCard = { type: 'NUMBERED'; color: Color; number: CardNumber }
@@ -85,3 +87,9 @@ export type GameEvent =
   | ({ __typename: 'GameUpdated' } & GameUpdatedEvt)
 
 export type PublishFn = (ev: GameEvent) => void
+
+export type RuntimeAug = {
+  userIds: (string | null)[]
+  _roundNo: number
+  _roundRowId?: string
+}

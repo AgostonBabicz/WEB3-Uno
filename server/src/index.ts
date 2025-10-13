@@ -8,9 +8,7 @@ import { makeExecutableSchema } from '@graphql-tools/schema'
 import { execute, subscribe } from 'graphql'
 import { WebSocketServer } from 'ws'
 import { getOperationAST, parse } from 'graphql'
-
-import { resolvers } from './graphql/resolver'
-import { typeDefs } from './graphql/schema'
+import { resolvers, typeDefs } from './graphql'
 
 async function bootstrap() {
   const schema = makeExecutableSchema({ typeDefs, resolvers })

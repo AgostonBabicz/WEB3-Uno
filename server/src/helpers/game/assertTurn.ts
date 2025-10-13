@@ -1,4 +1,4 @@
-import { GameRuntime } from '../types/types'
+import { GameRuntime } from '../../types/types'
 
 export function assertTurn(rt: GameRuntime, playerIndex: number) {
   if (!rt.g.currentRound) {

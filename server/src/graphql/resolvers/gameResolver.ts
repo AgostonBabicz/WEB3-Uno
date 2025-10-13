@@ -1,22 +1,23 @@
+import { DateTimeResolver, UUIDResolver } from 'graphql-scalars'
 import {
   getGame,
   hand,
   playableIndexes,
+  waitingGames,
+  createGame,
+  addPlayer,
   startRound,
   playCard,
   drawCard,
   sayUno,
   accuseUno,
   resetGame,
-  createGame,
-  addPlayer,
-  waitingGames,
-} from '../engine'
-import { publishEvent, publishUpdate, eventsTopic, updatesTopic, pubsub } from '../pubsub'
-import { GameEvent, Color } from '../types/types'
-import { DateTimeResolver, UUIDResolver } from 'graphql-scalars'
+} from '../../engine'
+import { publishEvent, publishUpdate, pubsub, eventsTopic, updatesTopic } from '../../pubsub'
+import { GameEvent } from '../../types/types'
+import { AddPlayerResolverInput, PlayCardResolverInput, DrawCardResolverInput, SayUnoResolverInput, AccuseUnoResolverInput, StartRoundResolverInput, CreateGameResolverInput } from 'src/types/gameResolversTypes'
 
-export const resolvers = {
+export const gameResolver = {
   UUID: UUIDResolver,
   DateTime: DateTimeResolver,
 
@@ -32,72 +33,58 @@ export const resolvers = {
       hand(gameId, playerIndex),
     playableIndexes: (_: any, { gameId, playerIndex }: { gameId: string; playerIndex: number }) =>
       playableIndexes(gameId, playerIndex),
-
     waitingGames: () => waitingGames(),
   },
 
   Mutation: {
-    createGame: (
-      _: any,
-      { input }: { input: { players: string[]; targetScore?: number; cardsPerPlayer?: number } },
-    ) => {
+    createGame: (_: any, { input }: { input: CreateGameResolverInput }) => {
       const target = input.targetScore ?? 500
       const cpp = input.cardsPerPlayer ?? 7
 
       const publisher = (ev: GameEvent) => {
         const id = (ev as any).gameId ?? ((ev as any).game && (ev as any).game.id)
-
         if (!id) return
-
         publishEvent(id, ev)
         if (ev.__typename === 'GameUpdated') {
           publishUpdate(id, (ev as any).game)
         }
       }
 
-      const game = createGame(input.players, target, cpp, publisher)
+      const game = createGame(input.players, target, cpp, publisher, input.userId as any)
       return { game }
     },
 
-    addPlayer: (_: any, { gameId, name }: { gameId: string; name: string }) =>
+    addPlayer: (_: any, { gameId, name, userId }: AddPlayerResolverInput) =>
       addPlayer(gameId, name, (ev) => {
         publishEvent(gameId, ev)
         if (ev.__typename === 'GameUpdated') publishUpdate(gameId, ev.game)
-      }),
+      }, userId as any),
 
-    startRound: (_: any, { input }: { input: { gameId: string } }) =>
+    startRound: (_: any, { input }: { input: StartRoundResolverInput }) =>
       startRound(input.gameId, (ev) => {
         publishEvent(input.gameId, ev)
         if (ev.__typename === 'GameUpdated') publishUpdate(input.gameId, ev.game)
       }),
 
-    playCard: (
-      _: any,
-      {
-        input,
-      }: { input: { gameId: string; playerIndex: number; cardIndex: number; askedColor?: Color } },
-    ) =>
+    playCard: (_: any, { input }: { input: PlayCardResolverInput }) =>
       playCard(input.gameId, input.playerIndex, input.cardIndex, input.askedColor, (ev) => {
         publishEvent(input.gameId, ev)
         if (ev.__typename === 'GameUpdated') publishUpdate(input.gameId, ev.game)
       }),
 
-    drawCard: (_: any, { input }: { input: { gameId: string; playerIndex: number } }) =>
+    drawCard: (_: any, { input }: { input: DrawCardResolverInput }) =>
       drawCard(input.gameId, input.playerIndex, (ev) => {
         publishEvent(input.gameId, ev)
         if (ev.__typename === 'GameUpdated') publishUpdate(input.gameId, ev.game)
       }),
 
-    sayUno: (_: any, { input }: { input: { gameId: string; playerIndex: number } }) =>
+    sayUno: (_: any, { input }: { input: SayUnoResolverInput }) =>
       sayUno(input.gameId, input.playerIndex, (ev) => {
         publishEvent(input.gameId, ev)
         if (ev.__typename === 'GameUpdated') publishUpdate(input.gameId, ev.game)
       }),
 
-    accuseUno: (
-      _: any,
-      { input }: { input: { gameId: string; accuserIndex: number; accusedIndex: number } },
-    ) =>
+    accuseUno: (_: any, { input }: { input: AccuseUnoResolverInput }) =>
       accuseUno(input.gameId, input.accuserIndex, input.accusedIndex, (ev) => {
         publishEvent(input.gameId, ev)
         if (ev.__typename === 'GameUpdated') publishUpdate(input.gameId, ev.game)

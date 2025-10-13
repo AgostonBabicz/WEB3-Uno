@@ -1,4 +1,4 @@
-import { Card } from "../types/types"
+import { Card } from '../../types/types'
 
 export function pointsForCard(card: Card): number {
   switch (card.type) {
@@ -17,4 +17,3 @@ export function pointsForCard(card: Card): number {
       return 0
   }
 }
-

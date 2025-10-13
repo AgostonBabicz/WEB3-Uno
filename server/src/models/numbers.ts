@@ -10,5 +10,3 @@ export const NUMBERS: Array<{ num: number; asEnum: any }> = [
   { num: 8, asEnum: 'N8' },
   { num: 9, asEnum: 'N9' },
 ]
-
-

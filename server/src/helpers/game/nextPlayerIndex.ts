@@ -1,4 +1,4 @@
-import { GameRuntime } from '../types/types'
+import { GameRuntime } from '../../types/types'
 
 export function nextPlayerIndex(rt: GameRuntime, from: number): number {
   const n = rt.g.players.length

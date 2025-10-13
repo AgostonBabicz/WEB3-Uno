@@ -1,14 +1,18 @@
 import { v4 as uuid } from 'uuid'
 import { Color, Card, Game, GameRuntime, PublishFn } from './types/types'
-import { advanceTurn } from './helpers/advanceTurn'
-import { canPlay } from './helpers/canPlay'
-import { refeed } from './helpers/refeed'
-import { syncHandCounts } from './helpers/syncHandCounts'
-import { playerView, gameView } from './helpers/views'
-import { assertTurn } from './helpers/assertTurn'
-import { beginRound } from './helpers/beginRound'
-import { applyCardEffects } from './helpers/applyCardEffects'
-import { finishRoundIfAny } from './helpers/finishRoundIfAny'
+import { advanceTurn } from './helpers/game/advanceTurn'
+import { canPlay } from './helpers/game/canPlay'
+import { refeed } from './helpers/game/refeed'
+import { syncHandCounts } from './helpers/game/syncHandCounts'
+import { playerView, gameView } from './helpers/game/views'
+import { assertTurn } from './helpers/game/assertTurn'
+import { beginRound } from './helpers/game/beginRound'
+import { applyCardEffects } from './helpers/game/applyCardEffects'
+import { finishRoundIfAny } from './helpers/game/finishRoundIfAny'
+
+import { persistGameCreate, persistPlayerJoin, persistRoundStart } from './helpers/game/persistanceFunctions'
+import { ensureAug } from './helpers/game/runtimeAug'
+
 
 const GAMES = new Map<string, GameRuntime>()
 
@@ -17,6 +21,7 @@ export function createGame(
   targetScore: number,
   cardsPerPlayer: number,
   publish: PublishFn,
+  hostUserId?: string | null,  
 ): Game {
   if (players.length < 1) throw new Error('Need at least 1 player to create a lobby')
   if (players.length > 4) throw new Error('Max 4 players')
@@ -31,7 +36,7 @@ export function createGame(
       targetScore,
       cardsPerPlayer,
       players: players.map((name) => ({
-        id: uuid(),
+        id: uuid(),        
         name,
         handCount: 0,
         score: 0,
@@ -47,7 +52,15 @@ export function createGame(
     direction: 'CW',
   }
 
+  const aug = ensureAug(runtime)
+  aug.userIds = [hostUserId ?? null] // host in seat 0
+  aug._roundNo = 0
+  aug._roundRowId = undefined
+
   GAMES.set(id, runtime)
+
+  // persist game + host join 
+  persistGameCreate(runtime, hostUserId ?? null)
 
   runtime.g.players.forEach((_, i) =>
     publish({
@@ -61,7 +74,12 @@ export function createGame(
   return gameView(runtime)
 }
 
-export function addPlayer(gameId: string, name: string, publish: PublishFn): Game {
+export function addPlayer(
+  gameId: string,
+  name: string,
+  publish: PublishFn,
+  userId?: string | null,   
+): Game {
   const rt = must(gameId)
   if (rt.g.currentRound) throw new Error('Cannot join: round already started')
   if (rt.g.players.length >= 4) throw new Error('Lobby full')
@@ -77,6 +95,11 @@ export function addPlayer(gameId: string, name: string, publish: PublishFn): Gam
   rt.hands.push([])
   rt.saidUno.push(false)
 
+  const aug = ensureAug(rt)
+  aug.userIds[newIx] = userId ?? null
+
+  if (userId) persistPlayerJoin(rt, userId, newIx)
+
   syncHandCounts(rt)
   publish({
     __typename: 'PlayerJoined',
@@ -91,7 +114,16 @@ export function addPlayer(gameId: string, name: string, publish: PublishFn): Gam
 export function startRound(gameId: string, publish: PublishFn): Game {
   const rt = must(gameId)
   if (rt.g.players.length < 2) throw new Error('Need at least 2 players to start')
+
+  const aug = ensureAug(rt)
+  aug._roundNo = (aug._roundNo ?? 0) + 1
+  aug._roundRowId = undefined
+
+  persistRoundStart(rt, aug._roundNo)
+
   beginRound(rt, 0, publish)
+
+
   return gameView(rt)
 }
 
@@ -112,8 +144,13 @@ export function resetGame(gameId: string, publish: PublishFn): Game {
   const players = rt.g.players.map((p) => p.name)
   const target = rt.g.targetScore
   const cpp = rt.g.cardsPerPlayer
+  const aug = ensureAug(rt)
+
   GAMES.delete(gameId)
-  const g = createGame(players, target, cpp, publish)
+
+  const hostUserId = aug.userIds[0] ?? null
+
+  const g = createGame(players, target, cpp, publish, hostUserId)
   return g
 }
 
@@ -168,11 +205,9 @@ export function playCard(
   const curColor = r.currentColor ?? null
   if (!canPlay(card, top, curColor)) throw new Error('Card not playable')
 
-  // play it
   hand.splice(cardIndex, 1)
   rt.discard.push(card)
 
-  // set color
   if (card.type === 'WILD' || card.type === 'WILD_DRAW') {
     if (!askedColor) throw new Error('askedColor required for wild')
     r.currentColor = askedColor
@@ -180,13 +215,11 @@ export function playCard(
     r.currentColor = (card as any).color as Color
   }
 
-  // sync visible round state
   r.discardTop = card
   r.drawPileSize = rt.deck.length
   r.direction = rt.direction
   syncHandCounts(rt)
 
-  // notify play
   publish({
     __typename: 'CardPlayed',
     gameId: rt.g.id,
@@ -195,15 +228,12 @@ export function playCard(
     askedColor: askedColor ?? null,
   })
 
-  // apply card effects, also returns how many times to advance the turn
   const advances = applyCardEffects(rt, r, playerIndex, card, askedColor, publish)
 
-  // round end?
   if (finishRoundIfAny(rt, playerIndex, publish)) {
     return gameView(rt)
   }
 
-  // otherwise advance the turn N times
   for (let i = 0; i < advances; i++) {
     advanceTurn(rt, publish)
   }

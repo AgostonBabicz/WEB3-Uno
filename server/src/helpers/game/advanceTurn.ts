@@ -1,4 +1,4 @@
-import { GameRuntime, GameEvent } from '../types/types'
+import { GameRuntime, GameEvent } from '../../types/types'
 
 export function advanceTurn(rt: GameRuntime, publish: (e: GameEvent) => void) {
   if (!rt.g.currentRound || rt.g.currentRound.hasEnded) return

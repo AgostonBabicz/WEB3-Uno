@@ -1,4 +1,4 @@
-import { GameRuntime, Game, Player } from '../types/types'
+import { GameRuntime, Game, Player } from '../../types/types'
 import { syncHandCounts } from './syncHandCounts'
 
 export function gameView(rt: GameRuntime): Game {

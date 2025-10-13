@@ -18,6 +18,7 @@ import {
 } from '../src/graphql/ops'
 import { Color } from '../src/model/deck'
 import router from '../src/router'
+import { useAuthStore } from './authStore'
 
 type Opts = {
   meName: string
@@ -26,6 +27,7 @@ type Opts = {
 }
 
 export const useServerGameStore = defineStore('serverGame', () => {
+  const auth = useAuthStore()
   const gameId = ref<string | null>(null)
   const meIndex = ref<number | null>(null)
   const game = ref<any | null>(null)
@@ -44,6 +46,7 @@ export const useServerGameStore = defineStore('serverGame', () => {
           players: [opts.meName],
           targetScore: opts.targetScore ?? 500,
           cardsPerPlayer: opts.cardsPerPlayer ?? 7,
+          userId: auth.id,
         },
       },
     })
@@ -71,7 +74,7 @@ export const useServerGameStore = defineStore('serverGame', () => {
 
     const { data } = await apollo.mutate({
       mutation: ADD_PLAYER,
-      variables: { gameId: id, name: myName },
+      variables: { gameId: id, name: myName, userId: auth.id },
     })
     const g = data?.addPlayer
     if (!g) throw new Error('addPlayer failed')
@@ -95,30 +98,30 @@ export const useServerGameStore = defineStore('serverGame', () => {
   }
 
   async function startRound() {
-  if (!gameId.value) return
-  
-  const { data: gq } = await apollo.query({
-    query: GET_GAME,
-    variables: { gameId: gameId.value },
-    fetchPolicy: 'no-cache',
-  })
-  if (gq?.game) game.value = gq.game
+    if (!gameId.value) return
 
-  const { data, errors } = await apollo.mutate({
-    mutation: START_ROUND,
-    variables: { input: { gameId: gameId.value } },
-  })
+    const { data: gq } = await apollo.query({
+      query: GET_GAME,
+      variables: { gameId: gameId.value },
+      fetchPolicy: 'no-cache',
+    })
+    if (gq?.game) game.value = gq.game
 
-  if (errors?.length) {
-    console.warn('startRound error:', errors)
-    throw new Error(errors[0].message || 'startRound failed')
+    const { data, errors } = await apollo.mutate({
+      mutation: START_ROUND,
+      variables: { input: { gameId: gameId.value, userId: auth.id } },
+    })
+
+    if (errors?.length) {
+      console.warn('startRound error:', errors)
+      throw new Error(errors[0].message || 'startRound failed')
+    }
+
+    if (data?.startRound) {
+      game.value = data.startRound
+      await refreshMyHand()
+    }
   }
-
-  if (data?.startRound) {
-    game.value = data.startRound
-    await refreshMyHand()
-  }
-}
 
   async function refreshMyHand() {
     if (gameId.value == null || meIndex.value == null) return
@@ -148,6 +151,7 @@ export const useServerGameStore = defineStore('serverGame', () => {
           playerIndex: meIndex.value,
           cardIndex,
           askedColor,
+          userId: auth.id,
         },
       },
     })
@@ -162,6 +166,7 @@ export const useServerGameStore = defineStore('serverGame', () => {
         input: {
           gameId: gameId.value,
           playerIndex: meIndex.value,
+          userId: auth.id,
         },
       },
     })
@@ -176,6 +181,7 @@ export const useServerGameStore = defineStore('serverGame', () => {
         input: {
           gameId: gameId.value,
           playerIndex: meIndex.value,
+          userId: auth.id,
         },
       },
     })
@@ -190,62 +196,61 @@ export const useServerGameStore = defineStore('serverGame', () => {
           gameId: gameId.value,
           accuserIndex: meIndex.value,
           accusedIndex,
+          userId: auth.id,
         },
       },
     })
   }
 
   function goGameOverIfDone(g: any) {
-  if (!g) return
-  if (navigatedGameOver.value) return
-  const winnerIx = g.winnerIndex
-  if (winnerIx == null) return
-  const winnerName = g.players?.[winnerIx]?.name ?? 'Unknown'
-  navigatedGameOver.value = true
-  router.push({ name: 'GameOver', query: { winner: winnerName } })
-}
+    if (!g) return
+    if (navigatedGameOver.value) return
+    const winnerIx = g.winnerIndex
+    if (winnerIx == null) return
+    const winnerName = g.players?.[winnerIx]?.name ?? 'Unknown'
+    navigatedGameOver.value = true
+    router.push({ name: 'GameOver', query: { winner: winnerName } })
+  }
 
   // --------- Subscriptions ----------
 
   async function subscribeAll() {
-  if (!gameId.value) return
-  updatesSub?.unsubscribe()
-  eventsSub?.unsubscribe()
+    if (!gameId.value) return
+    updatesSub?.unsubscribe()
+    eventsSub?.unsubscribe()
 
-  updatesSub = apollo
-    .subscribe({ query: SUB_UPDATES, variables: { gameId: gameId.value } })
-    .subscribe({
-      next: async ({ data }: any) => {
-        const g = data?.gameUpdates
-        if (g) {
-          game.value = g
-          goGameOverIfDone(g)         
-          await refreshMyHand()
-        }
-      },
-      error: () => {},
-    })
-
-  eventsSub = apollo
-    .subscribe({ query: SUB_EVENTS, variables: { gameId: gameId.value } })
-    .subscribe({
-      next: ({ data }: any) => {
-        const ev = data?.gameEvents
-        if (!ev) return
-        // optional: react to the event stream too
-        if (ev.__typename === 'GameEnded') {
-          const winnerIx = ev.winnerIndex
-          const winnerName = game.value?.players?.[winnerIx]?.name ?? 'Unknown'
-          if (!navigatedGameOver.value) {
-            navigatedGameOver.value = true
-            router.push({ name: 'GameOver', query: { winner: winnerName } })
+    updatesSub = apollo
+      .subscribe({ query: SUB_UPDATES, variables: { gameId: gameId.value } })
+      .subscribe({
+        next: async ({ data }: any) => {
+          const g = data?.gameUpdates
+          if (g) {
+            game.value = g
+            goGameOverIfDone(g)
+            await refreshMyHand()
           }
-        }
-      },
-      error: () => {},
-    })
-}
+        },
+        error: () => {},
+      })
 
+    eventsSub = apollo
+      .subscribe({ query: SUB_EVENTS, variables: { gameId: gameId.value } })
+      .subscribe({
+        next: ({ data }: any) => {
+          const ev = data?.gameEvents
+          if (!ev) return
+          if (ev.__typename === 'GameEnded') {
+            const winnerIx = ev.winnerIndex
+            const winnerName = game.value?.players?.[winnerIx]?.name ?? 'Unknown'
+            if (!navigatedGameOver.value) {
+              navigatedGameOver.value = true
+              router.push({ name: 'GameOver', query: { winner: winnerName } })
+            }
+          }
+        },
+        error: () => {},
+      })
+  }
 
   const playerInTurn = computed(() => game.value?.currentRound?.playerInTurnIndex ?? null)
   const hasEnded = computed(() => !!game.value?.currentRound?.hasEnded)

@@ -1,4 +1,4 @@
-import { GameRuntime, PublishFn } from '../types/types'
+import { GameRuntime, PublishFn } from '../../types/types'
 import { refeed } from './refeed'
 import { syncHandCounts } from './syncHandCounts'
 
