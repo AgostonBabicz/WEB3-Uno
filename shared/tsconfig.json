@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "baseUrl": ".",
+    "rootDir": ".",
+    "noEmit": true,
+    "types": ["jest"]
+  },
+  "include": ["src", "__test__"]
+}

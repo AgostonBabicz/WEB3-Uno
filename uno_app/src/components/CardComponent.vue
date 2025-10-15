@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Card, CardNumber, Color, Type } from '../model/deck'
+import { Card, CardNumber, Color, Type } from '@uno/shared/model/deck'
 
 const props = defineProps<{
   type: Type

@@ -73,7 +73,7 @@ describe('Playing a round', () => {
       hands: [
         [{ color: 'GREEN', type: 'DRAW' }],
         [{ color: 'BLUE', type: 'NUMBERED', number: 8 }],
-        [{ type: 'WILD DRAW' }],
+        [{ type: 'WILD_DRAW' }],
         [{ type: 'NUMBERED', color: 'YELLOW', number: 3 }],
       ],
       drawPile: [{ type: 'NUMBERED', color: 'GREEN', number: 5 }, { type: 'WILD' }],
@@ -138,7 +138,7 @@ describe('ending the second round', () => {
       hands: [
         [{ color: 'GREEN', type: 'NUMBERED', number: 8 }],
         [{ color: 'BLUE', type: 'DRAW' }],
-        [{ type: 'WILD DRAW' }],
+        [{ type: 'WILD_DRAW' }],
         [{ type: 'NUMBERED', color: 'YELLOW', number: 3 }],
       ],
       drawPile: [{ type: 'NUMBERED', color: 'GREEN', number: 5 }, { type: 'WILD' }],
@@ -178,7 +178,7 @@ describe('ending the third round', () => {
       players: ['a', 'b', 'c', 'd'],
       hands: [
         [{ color: 'BLUE', type: 'DRAW' }],
-        [{ type: 'WILD DRAW' }],
+        [{ type: 'WILD_DRAW' }],
         [{ color: 'GREEN', type: 'SKIP' }],
         [{ type: 'NUMBERED', color: 'YELLOW', number: 3 }],
       ],

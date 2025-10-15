@@ -10,7 +10,7 @@ const memento = {
     [{ type: 'REVERSE', color: 'GREEN' }],
     [{ type: 'SKIP', color: 'RED' }],
   ],
-  drawPile: [{ type: 'WILD DRAW' }],
+  drawPile: [{ type: 'WILD_DRAW' }],
   discardPile: [
     { type: 'NUMBERED', color: 'BLUE', number: 7 },
     { type: 'SKIP', color: 'BLUE' },
@@ -44,7 +44,7 @@ describe('create round from valid memento', () => {
     expect(is({ type: 'SKIP', color: 'RED' })(round.playerHand(2).at(0))).toBeTruthy()
   })
   it('reads the draw pile from the memento', () => {
-    expect(is({ type: 'WILD DRAW' })(round.drawPile().deal())).toBeTruthy()
+    expect(is({ type: 'WILD_DRAW' })(round.drawPile().deal())).toBeTruthy()
     expect(round.drawPile().size).toEqual(0)
   })
   it('reads the discard pile from the memento', () => {
@@ -78,7 +78,7 @@ describe('create round from valid memento', () => {
           [{ type: 'REVERSE', color: 'GREEN' }],
           [{ type: 'SKIP', color: 'RED' }],
         ],
-        drawPile: [{ type: 'WILD DRAW' }],
+        drawPile: [{ type: 'WILD_DRAW' }],
         discardPile: [
           { type: 'NUMBERED', color: 'BLUE', number: 7 },
           { type: 'SKIP', color: 'RED' },

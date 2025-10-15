@@ -452,4 +452,7 @@ export class Round implements RoundInterface {
       playerInTurn: this.playerInTurn(),
     }
   }
+
+  get discardTop(): Card | undefined { return this.discardDeck.top() }
+  get drawPileSize(): number { return this.drawDeck.size }
 }

@@ -3,7 +3,7 @@ import { onMounted, computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import CardComponent from '../components/CardComponent.vue'
 import Deck from '../components/Deck.vue'
-import type { Color } from '../model/deck'
+import type { Color } from '@uno/shared/model/deck'
 import { useServerGameStore } from '../../store/serverGameStore'
 
 const route = useRoute()

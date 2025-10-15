@@ -1,8 +1,8 @@
 import { ref } from 'vue'
-import { Game } from '../model/uno'
-import { standardRandomizer, standardShuffler } from '../utils/random_utils'
-import type { Card, Color } from '../model/deck'
-import { Round } from '../model/round'
+import { Game } from '@uno/shared/model/uno'
+import { standardRandomizer, standardShuffler } from '@uno/shared/utils/random_utils'
+import type { Card, Color } from '@uno/shared/model/deck'
+import { Round } from '@uno/shared/model/round'
 
 type Opts = {
   players: string[]

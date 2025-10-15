@@ -30,7 +30,7 @@ export function createInitialDeck(): Deck {
 
   for (let i = 0; i < 4; i++) {
     deck.push({ type: 'WILD' })
-    deck.push({ type: 'WILD DRAW' })
+    deck.push({ type: 'WILD_DRAW' })
   }
 
   deck.push({ type: 'NUMBERED', color: 'BLUE', number: 0 })

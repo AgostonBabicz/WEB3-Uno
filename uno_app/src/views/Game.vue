@@ -2,11 +2,11 @@
 import CardComponent from '../components/CardComponent.vue'
 import Deck from '../components/Deck.vue'
 import { ref, onMounted, computed } from 'vue'
-import type { Color } from '../model/deck'
 import { nextTick } from 'vue'
 import router from '../router'
 import { useUnoGameStore } from '../../store/unoGameStore'
 import { storeToRefs } from 'pinia'
+import { Color } from '@uno/shared/model/deck'
 
 const props = defineProps<{
   botNumber: number

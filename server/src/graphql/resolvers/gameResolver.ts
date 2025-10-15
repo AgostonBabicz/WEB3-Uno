@@ -50,7 +50,7 @@ export const gameResolver = {
         }
       }
 
-      const game = createGame(input.players, target, cpp, publisher, input.userId as any)
+      const game = createGame(input.players, target, cpp, publisher)
       return { game }
     },
 
@@ -58,7 +58,7 @@ export const gameResolver = {
       addPlayer(gameId, name, (ev) => {
         publishEvent(gameId, ev)
         if (ev.__typename === 'GameUpdated') publishUpdate(gameId, ev.game)
-      }, userId as any),
+      }),
 
     startRound: (_: any, { input }: { input: StartRoundResolverInput }) =>
       startRound(input.gameId, (ev) => {

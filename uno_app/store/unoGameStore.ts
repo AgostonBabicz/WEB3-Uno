@@ -1,10 +1,10 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import { Card, Color } from '../src/model/deck'
-import { Round } from '../src/model/round'
-import { Game } from '../src/model/uno'
-import { standardRandomizer, standardShuffler } from '../src/utils/random_utils'
-import { randomDelay } from '../src/utils/bot_delay'
+import { Card, Color } from '@uno/shared/model/deck'
+import { Round } from '@uno/shared/model/round'
+import { Game } from '@uno/shared/model/uno'
+import { standardRandomizer, standardShuffler } from '@uno/shared/utils/random_utils'
+import { randomDelay } from '@uno/shared/utils/bot_delay'
 
 type Opts = {
   players: string[]

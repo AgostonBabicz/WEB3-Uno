@@ -99,7 +99,7 @@ export class Game implements GameInterface {
 
     this.startNewRound()
   }
-  private startNewRound() {
+  public startNewRound() {
     const dealer = this.randomizer(this.playerCount)
     this.presentRound = new Round(this.players, dealer, this.shuffler, this.cardsPerPlayer)
   }
