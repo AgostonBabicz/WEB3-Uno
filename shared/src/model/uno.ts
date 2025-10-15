@@ -19,10 +19,11 @@ export class Game implements GameInterface {
     randomizer: Randomizer,
     shuffler: Shuffler<Card>,
     cardsPerPlayer: number,
+    options?: { deferFirstRound?: boolean }
   ) {
-    if (players.length < 2) {
-      throw new Error('A Game requires at least 2 players')
-    }
+    // if (players.length < 2) {
+    //   throw new Error('A Game requires at least 2 players')
+    // }
     if (targetScore <= 0) {
       throw new Error('A Game requires a target score of more than 0')
     }
@@ -47,10 +48,29 @@ export class Game implements GameInterface {
     if (this.scores.filter((s) => s >= targetScore).length > 1) {
       throw new Error('There can be at most one winner')
     }
-    const dealer = this.randomizer(this.playerCount)
-    this.presentRound = new Round(players, dealer, this.shuffler, this.cardsPerPlayer)
-    this.attachRoundHandlers()
+    if (!options?.deferFirstRound) {
+      if (players.length < 2) {
+        throw new Error('A Game requires at least 2 players to start')
+      }
+      const dealer = this.randomizer(this.playerCount)
+      this.presentRound = new Round(this.players, dealer, this.shuffler, this.cardsPerPlayer)
+      this.attachRoundHandlers()
+    }
+    // const dealer = this.randomizer(this.playerCount)
+    // this.presentRound = new Round(players, dealer, this.shuffler, this.cardsPerPlayer)
+    // this.attachRoundHandlers()
   }
+  public addPlayer(name: string): void {
+    if (this.presentRound) {
+      throw new Error('Cannot join: round already started')
+    }
+    if (!name || !name.trim()) throw new Error('Player name required')
+    if (this.players.length >= 4) throw new Error('Max 4 players')
+    this.players.push(name)
+    this.scores.push(0)
+    ;(this as any).playerCount = this.players.length
+  }
+  
   player(player: number): string {
     if (player < 0 || player >= this.playerCount) throw new Error('Player index is out of bounds')
     return this.players[player]
@@ -99,7 +119,11 @@ export class Game implements GameInterface {
 
     this.startNewRound()
   }
+  public canStart(): boolean {
+    return this.players.length >= 2
+  }
   public startNewRound() {
+    if (!this.canStart()) throw new Error('Need at least 2 players to start a round')
     const dealer = this.randomizer(this.playerCount)
     this.presentRound = new Round(this.players, dealer, this.shuffler, this.cardsPerPlayer)
   }

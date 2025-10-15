@@ -16,7 +16,7 @@ import {
   SUB_EVENTS,
   WAITING_GAMES,
 } from '../src/graphql/ops'
-import { Color } from '../src/model/deck'
+import { Color } from '@uno/shared/model/deck'
 import router from '../src/router'
 import { useAuthStore } from './authStore'
 

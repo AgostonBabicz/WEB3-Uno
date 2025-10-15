@@ -14,17 +14,72 @@ import {
   persistGameCreate,
   persistPlayerJoin,
   persistRoundStart,
-} from "./helpers/game/persistanceFunctions"
+} from './helpers/game/persistanceFunctions'
 
 // This is your pub/sub function type (GraphQL subscriptions, WS bus, whatever).
 export type PublishFn = (evt: any) => void
 
-// In-memory registry. One Game instance per id.
+type GqlCard = {
+  type: 'NUMBERED' | 'SKIP' | 'REVERSE' | 'DRAW' | 'WILD' | 'WILD_DRAW'
+  color?: 'RED' | 'YELLOW' | 'GREEN' | 'BLUE'
+  number?: 'N0' | 'N1' | 'N2' | 'N3' | 'N4' | 'N5' | 'N6' | 'N7' | 'N8' | 'N9'
+}
+
+function toGqlCard(c: Card | undefined | null): GqlCard | null {
+  if (!c) return null
+
+  let number: GqlCard['number'] | undefined
+  if (c.type === 'NUMBERED') {
+    const v = (c as any).number
+    if (typeof v !== 'number' || v < 0 || v > 9) {
+      throw new Error(`Invalid NUMBERED card number: ${v}`)
+    }
+    number = `N${v}` as GqlCard['number']
+  }
+
+  return {
+    type: c.type as GqlCard['type'],
+    ...(c as any).color ? { color: (c as any).color } : {},
+    ...(number ? { number } : {}),
+  }
+}
+
 const GAMES = new Map<string, Game>()
-
-// If you want to refer back from instance to its id without polluting the model, use a WeakMap.
 const GAME_IDS = new WeakMap<Game, string>()
+const GAME_META = new WeakMap<Game, { createdAt: string; updatedAt: string | null }>()
+const ROUND_IDS = new WeakMap<Game, string | null>()
+const PLAYER_IDS = new WeakMap<Game, string[]>()
 
+function touch(g: Game) {
+  const meta = GAME_META.get(g)
+  if (meta) meta.updatedAt = new Date().toISOString()
+}
+function getPlayerIds(g: Game, count: number): string[] {
+  let ids = PLAYER_IDS.get(g)
+  if (!ids) {
+    ids = Array.from({ length: count }, () => uuid())
+    PLAYER_IDS.set(g, ids)
+  } else if (ids.length < count) {
+    // append ids for newly added players
+    for (let i = ids.length; i < count; i++) ids.push(uuid())
+  } else if (ids.length > count) {
+    ids = ids.slice(0, count)
+    PLAYER_IDS.set(g, ids)
+  }
+  return ids
+}
+function ensureRoundId(g: Game): string {
+  let id = ROUND_IDS.get(g) ?? null
+  if (!id) {
+    id = uuid()
+    ROUND_IDS.set(g, id)
+  }
+  return id
+}
+
+function clearRoundId(g: Game) {
+  ROUND_IDS.set(g, null)
+}
 // Public API the resolvers call
 export async function createGame(
   players: string[],
@@ -37,64 +92,55 @@ export async function createGame(
   if (players.length > 4) throw new Error('Max 4 players')
 
   const id = uuid()
-  const g = new Game(players, targetScore, standardRandomizer, standardShuffler, cardsPerPlayer)
-
-  // Your model immediately starts a round in the constructor.
-  // If you want “lobby then startRound,” blank it out until startRound is called.
-  // This relies on private state, so yes, it’s a wart. It keeps the model as SSOT for rules.
-  ;(g as any).presentRound = undefined
+  const defer = players.length === 1
+  const g = new Game(
+    players,
+    targetScore,
+    standardRandomizer,
+    standardShuffler,
+    cardsPerPlayer,
+    { deferFirstRound: defer },
+  )
 
   GAMES.set(id, g)
   GAME_IDS.set(g, id)
+  GAME_META.set(g, { createdAt: new Date().toISOString(), updatedAt: null })
+  if (g.currentRound()) ensureRoundId(g)
 
   await persistGameCreate(id, g, hostUserId ?? null)
-
-  // Let clients know the lobby exists
   publish({ __typename: 'GameUpdated', game: gameView(g, id) })
   return gameView(g, id)
 }
 
-export async function addPlayer(gameId: string, name: string, publish: PublishFn) {
+export function addPlayer(gameId: string, name: string, publish: PublishFn) {
   const g = must(gameId)
-  // No mid-round joins
   if (g.currentRound()) throw new Error('Cannot join: round already started')
 
-  // The model has players encapsulated. Rehydrate with +1 player.
-  const snap = g.toMemento()
-  const players = [...snap.players, name]
-  const ng = new Game(players, snap.targetScore, standardRandomizer, standardShuffler, snap.cardsPerPlayer)
-  ;(ng as any).presentRound = undefined // keep lobby state
-  const id = gameId
-
-  GAMES.set(id, ng)
-  GAME_IDS.set(ng, id)
-
-  // persistence hook (userId flow omitted here; add if you pass it in)
-  await persistPlayerJoin(gameId, /* userId */ null, players.length - 1)
-// pass the real userId if you have it in the resolver
+  g.addPlayer(name)
+  touch(g)
 
   publish({
     __typename: 'PlayerJoined',
-    gameId: id,
-    playerIndex: players.length - 1,
+    gameId,
+    playerIndex: g.toMemento().players.length - 1,
     player: { name },
   })
-  publish({ __typename: 'GameUpdated', game: gameView(ng, id) })
-  return gameView(ng, id)
+  publish({ __typename: 'GameUpdated', game: gameView(g, gameId) })
+  return gameView(g, gameId)
 }
 
-export async function startRound(gameId: string, publish: PublishFn) {
+export function startRound(gameId: string, publish: PublishFn) {
   const g = must(gameId)
   if (g.currentRound()) throw new Error('Round already started')
-  // The model’s startNewRound is private in your code.
-  // Make it public in the model, or call it anyway and let TS complain less than your users.
-  ;(g as any).startNewRound()
+  if (!g.canStart()) throw new Error('Need at least 2 players to start')
 
-  const id = gameId
-  await persistRoundStart(gameId, 1)
+  g.startNewRound()
+  ensureRoundId(g)
+  touch(g)
 
-  publish({ __typename: 'GameUpdated', game: gameView(g, id) })
-  return gameView(g, id)
+  persistRoundStart(gameId, 1)
+  publish({ __typename: 'GameUpdated', game: gameView(g, gameId) })
+  return gameView(g, gameId)
 }
 
 export function waitingGames() {
@@ -120,26 +166,33 @@ export function resetGame(gameId: string, publish: PublishFn) {
     standardShuffler,
     snap.cardsPerPlayer,
   )
-  ;(ng as any).presentRound = undefined
+    ; (ng as any).presentRound = undefined
   GAMES.set(id, ng)
   GAME_IDS.set(ng, id)
 
+  const oldMeta = GAME_META.get(g)
+  GAME_META.set(ng, {
+    createdAt: oldMeta?.createdAt ?? new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  })
+
+  clearRoundId(ng)
   publish({ __typename: 'GameUpdated', game: gameView(ng, id) })
   return gameView(ng, id)
 }
 
-export function hand(gameId: string, playerIndex: number): Card[] {
+export function hand(gameId: string, playerIndex: number): GqlCard[] {
   const g = must(gameId)
   const r = g.currentRound()
   if (!r) return []
-  return r.playerHand(playerIndex) ?? []
+  const raw = r.playerHand(playerIndex) ?? []
+  return raw.map(toGqlCard).filter(Boolean) as GqlCard[]
 }
 
 export function playableIndexes(gameId: string, playerIndex: number): number[] {
   const g = must(gameId)
   const r = g.currentRound()
   if (!r) return []
-  // You only own your turn’s legality
   if (r.playerInTurn() !== playerIndex) return []
   const hand = r.playerHand(playerIndex) ?? []
   return hand.map((_, i) => (r.canPlay(i) ? i : -1)).filter((i) => i >= 0)
@@ -152,6 +205,7 @@ export function drawCard(gameId: string, playerIndex: number, publish: PublishFn
   if (r.playerInTurn() !== playerIndex) throw new Error('Not your turn')
 
   r.draw()
+  touch(g)
 
   publish({ __typename: 'CardDrawn', gameId, playerIndex, drew: 1 })
   publish({ __typename: 'GameUpdated', game: gameView(g, gameId) })
@@ -170,13 +224,15 @@ export function playCard(
   if (!r) throw new Error('Round not started')
   if (r.playerInTurn() !== playerIndex) throw new Error('Not your turn')
 
-  const card = r.play(cardIndex, askedColor ?? undefined)
+  const modelCard = r.play(cardIndex, askedColor ?? undefined)
+  const gqlCard = toGqlCard(modelCard)
+  touch(g)
 
   publish({
     __typename: 'CardPlayed',
     gameId,
     playerIndex,
-    card,
+    card: gqlCard,
     askedColor: askedColor ?? null,
   })
   publish({ __typename: 'GameUpdated', game: gameView(g, gameId) })
@@ -189,6 +245,7 @@ export function sayUno(gameId: string, playerIndex: number, publish: PublishFn) 
   if (!r) throw new Error('Round not started')
 
   r.sayUno(playerIndex)
+  touch(g)
 
   publish({ __typename: 'UnoSaid', gameId, playerIndex })
   publish({ __typename: 'GameUpdated', game: gameView(g, gameId) })
@@ -206,6 +263,7 @@ export function accuseUno(
   if (!r) throw new Error('Round not started')
 
   const success = r.catchUnoFailure({ accuser: accuserIndex, accused: accusedIndex })
+  touch(g)
 
   publish({
     __typename: 'UnoAccusationResult',
@@ -231,24 +289,46 @@ function playerCountOf(g: Game): number {
 }
 
 function gameView(g: Game, id: string) {
-  // Use the model’s memento as the single source of truth for public state.
   const snap = g.toMemento()
   const round = g.currentRound()
+  const meta = GAME_META.get(g) ?? {
+    createdAt: new Date().toISOString(),
+    updatedAt: null as string | null,
+  }
+  if (!GAME_META.has(g)) GAME_META.set(g, meta)
+
+  const playerIds = getPlayerIds(g, snap.players.length)
+
+  const handCount = (ix: number) =>
+    round ? (round.playerHand(ix)?.length ?? 0) : 0
+  const saidUno = (_ix: number) => false
 
   return {
     id,
+    createdAt: meta.createdAt,
     targetScore: snap.targetScore,
-    scores: snap.scores,
-    players: snap.players.map((name) => ({ name })), // project to public shape
-    winnerIndex: g.winner(),
+    cardsPerPlayer: snap.cardsPerPlayer,
+
+    players: snap.players.map((name, ix) => ({
+      id: playerIds[ix],
+      name,
+      handCount: handCount(ix),
+      score: snap.scores[ix] ?? 0,
+      saidUno: saidUno(ix),
+    })),
+
     currentRound: round
       ? {
-          playerInTurnIndex: round.playerInTurn() ?? null,
-          hasEnded: round.hasEnded(),
-          // derive what UI needs from the memento
-          discardTop: snap.currentRound?.discardPile?.[0],
-          drawPileSize: snap.currentRound?.drawPile?.length ?? 0,
-        }
+        id: ensureRoundId(g),
+        playerInTurnIndex: round.playerInTurn() ?? null,
+        discardTop: toGqlCard(snap.currentRound?.discardPile?.[0]),
+        drawPileSize: snap.currentRound?.drawPile?.length ?? 0,
+        currentColor: snap.currentRound?.currentColor ?? null,
+        direction: snap.currentRound?.currentDirection ?? 'clockwise',
+        hasEnded: round.hasEnded(),
+      }
       : null,
+
+    winnerIndex: g.winner(),
   }
 }
