@@ -234,6 +234,11 @@ export const SUB_EVENTS = gql`
           id
         }
       }
+      ... on Notice {
+        title
+        message
+        at
+      }
     }
   }
 `

@@ -236,6 +236,10 @@
   background: rgba(0, 0, 0, 0.6); /* slightly darker on focus */
 }
 
+.chip{
+  width: 70px;
+}
+
 /* RESPONSIVE */
 @media (max-width: 640px) {
   .center {

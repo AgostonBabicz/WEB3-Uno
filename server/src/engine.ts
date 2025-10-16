@@ -1,22 +1,14 @@
-// engine.ts — server-side wrapper around the frontend model (single source of truth)
-
 import { v4 as uuid } from 'uuid'
-
-// Use the model’s types and classes, not some parallel DIY runtime.
 import type { Color, Card } from '@uno/shared/model/deck'
 import { Game } from '@uno/shared/model/uno'
 
-// If you need the same random behavior as the client model utilities
 import { standardRandomizer, standardShuffler } from '@uno/shared/utils/random_utils'
-
-// Whatever your persistence hooks are; keep them thin.
 import {
   persistGameCreate,
   persistPlayerJoin,
   persistRoundStart,
 } from './helpers/game/persistanceFunctions'
 
-// This is your pub/sub function type (GraphQL subscriptions, WS bus, whatever).
 export type PublishFn = (evt: any) => void
 
 type GqlCard = {
@@ -42,6 +34,16 @@ function toGqlCard(c: Card | undefined | null): GqlCard | null {
     ...(c as any).color ? { color: (c as any).color } : {},
     ...(number ? { number } : {}),
   }
+}
+
+export function notify(gameId: string, title: string, message: string, publish: PublishFn) {
+  publish({
+    __typename: 'Notice',
+    gameId,
+    title,
+    message,
+    at: new Date().toISOString(),
+  })
 }
 
 const GAMES = new Map<string, Game>()
@@ -207,6 +209,7 @@ export function drawCard(gameId: string, playerIndex: number, publish: PublishFn
   r.draw()
   touch(g)
 
+  notify(gameId, 'Drawn card', `Player ${playerIndex} drawn a card`, publish)
   publish({ __typename: 'CardDrawn', gameId, playerIndex, drew: 1 })
   publish({ __typename: 'GameUpdated', game: gameView(g, gameId) })
   return gameView(g, gameId)
@@ -226,6 +229,26 @@ export function playCard(
 
   const modelCard = r.play(cardIndex, askedColor ?? undefined)
   const gqlCard = toGqlCard(modelCard)
+  if(gqlCard.type==="NUMBERED"){
+    const number = gqlCard.number
+    const color = gqlCard.color
+    notify(gameId, 'Numbered card played', `Player ${playerIndex} chose ${color} ${number}`, publish)
+  }else if (gqlCard?.type === 'WILD') {
+    const asked = askedColor ?? 'RED'
+    notify(gameId, 'Wild card played', `Player ${playerIndex} chose ${asked}`, publish)
+  }else if(gqlCard?.type === 'WILD_DRAW'){
+    const asked = askedColor ?? 'RED'
+    notify(gameId, 'Wild card played', `Player ${playerIndex} chose ${asked}, draw 4 cards`, publish)
+  }else if(gqlCard.type ==="DRAW"){
+    const color = gqlCard.color
+    notify(gameId, `Draw (${color}) card played`, `Player ${playerIndex} made the next player draw 2 cards`, publish)
+  }else if(gqlCard.type ==="REVERSE"){
+    const color = gqlCard.color
+    notify(gameId, `Reverse (${color}) card played`, `Player ${playerIndex} made the round's direction the opposite`, publish)
+  }else{
+    const color = gqlCard.color
+    notify(gameId, `Skip (${color}) card played`, `Player ${playerIndex} skipped the next player in turn`, publish)
+  }
   touch(g)
 
   publish({
@@ -246,7 +269,7 @@ export function sayUno(gameId: string, playerIndex: number, publish: PublishFn) 
 
   r.sayUno(playerIndex)
   touch(g)
-
+  notify(gameId, `${playerIndex} said uno`,'', publish)
   publish({ __typename: 'UnoSaid', gameId, playerIndex })
   publish({ __typename: 'GameUpdated', game: gameView(g, gameId) })
   return gameView(g, gameId)
@@ -264,7 +287,7 @@ export function accuseUno(
 
   const success = r.catchUnoFailure({ accuser: accuserIndex, accused: accusedIndex })
   touch(g)
-
+  notify(gameId, `${accuserIndex} accused ${accusedIndex} for not saying uno`,'', publish)
   publish({
     __typename: 'UnoAccusationResult',
     gameId,

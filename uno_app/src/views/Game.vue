@@ -7,6 +7,7 @@ import router from '../router'
 import { useUnoGameStore } from '../../store/unoGameStore'
 import { storeToRefs } from 'pinia'
 import { Color } from '@uno/shared/model/deck'
+import PopUpBox from '../components/PopUpBox.vue'
 
 const props = defineProps<{
   botNumber: number
@@ -87,10 +88,9 @@ function onUno() {
 function accuseOpponent(opIx: number) {
   try {
     vm.accuse(meIx, opIx)
-  } catch {}
+  } catch { }
 }
 
-// PTT type bot tomfoolery
 // Minimal bot loop: keep taking bot turns until it's your turn or round ends
 let botsBusy = false
 async function pumpBots() {
@@ -127,14 +127,9 @@ onMounted(() => {
     </div>
 
     <header class="row opponents">
-      <div
-        v-for="(botName, bi) in bots"
-        :key="botName"
-        class="opponent"
-        :class="{ playing: currentTurn === botIndices[bi] }"
-        @click="accuseOpponent(botIndices[bi])"
-        title="Click to accuse this player"
-      >
+      <div v-for="(botName, bi) in bots" :key="botName" class="opponent"
+        :class="{ playing: currentTurn === botIndices[bi] }" @click="accuseOpponent(botIndices[bi])"
+        title="Click to accuse this player">
         <div class="column">
           <span class="name">{{ botName }}</span>
           <span class="score">(Score: {{ vm.scoreOf(botIndices[bi]) }})</span>
@@ -150,21 +145,14 @@ onMounted(() => {
     <!-- Center table -->
     <section class="table">
       <div class="pile discard">
-        <CardComponent
-          v-if="vm.topDiscard()"
-          :type="vm.topDiscard()!.type"
-          :color="
-            vm.topDiscard()!.type === 'NUMBERED' ||
+        <CardComponent v-if="vm.topDiscard()" :type="vm.topDiscard()!.type" :color="vm.topDiscard()!.type === 'NUMBERED' ||
             vm.topDiscard()!.type === 'SKIP' ||
             vm.topDiscard()!.type === 'REVERSE' ||
             vm.topDiscard()!.type === 'DRAW'
-              ? (vm.topDiscard() as any).color
-              : undefined
-          "
-          :number="
-            vm.topDiscard()!.type === 'NUMBERED' ? (vm.topDiscard() as any).number : undefined
-          "
-        />
+            ? (vm.topDiscard() as any).color
+            : undefined
+          " :number="vm.topDiscard()!.type === 'NUMBERED' ? (vm.topDiscard() as any).number : undefined
+            " />
       </div>
       <div class="pile draw" @click="onDraw" title="Draw">
         <Deck size="md" />
@@ -179,27 +167,15 @@ onMounted(() => {
         <span class="score">(Score: {{ vm.scoreOf(meIx) }})</span>
       </div>
       <div class="fan">
-        <button
-          v-for="(card, ix) in yourHand()"
-          :key="ix"
-          class="hand-card-btn"
-          :disabled="!myTurn() || !vm.canPlayAt(ix)"
-          @click="onPlayCard(ix)"
-          title="Play"
-        >
-          <CardComponent
-            :type="card.type"
-            :color="
-              card.type === 'NUMBERED' ||
+        <button v-for="(card, ix) in yourHand()" :key="ix" class="hand-card-btn"
+          :disabled="!myTurn() || !vm.canPlayAt(ix)" @click="onPlayCard(ix)" title="Play">
+          <CardComponent :type="card.type" :color="card.type === 'NUMBERED' ||
               card.type === 'SKIP' ||
               card.type === 'REVERSE' ||
               card.type === 'DRAW'
-                ? (card as any).color
-                : undefined
-            "
-            :number="card.type === 'NUMBERED' ? (card as any).number : undefined"
-            class="hand-card"
-          />
+              ? (card as any).color
+              : undefined
+            " :number="card.type === 'NUMBERED' ? (card as any).number : undefined" class="hand-card" />
         </button>
       </div>
 
@@ -212,31 +188,14 @@ onMounted(() => {
     <!-- WILD color picker -->
     <div v-if="showColorPicker !== null" class="color-picker-backdrop">
       <div class="color-picker">
-        <button
-          v-for="c in COLORS"
-          :key="c"
-          class="color-chip"
-          :data-color="c.toLowerCase()"
-          @click="pickColor(c)"
-        >
+        <button v-for="c in COLORS" :key="c" class="color-chip" :data-color="c.toLowerCase()" @click="pickColor(c)">
           {{ c }}
         </button>
       </div>
     </div>
 
-    <div
-      v-if="showPopUpMessage !== null"
-      class="pop-up-message-backdrop"
-      role="dialog"
-      aria-modal="true"
-      @click.self="clearMessage"
-    >
-      <div class="pop-up-message" aria-live="polite">
-        <button class="close-btn" @click="clearMessage" aria-label="Close">×</button>
-        <h2>{{ popUpTitle }}</h2>
-        <p>{{ popUpMessage }}</p>
-      </div>
-    </div>
+    <PopUpBox :show="!!showPopUpMessage" :title="popUpTitle || ''" :message="popUpMessage || ''"
+      @close="clearMessage()" />
   </main>
 </template>
 

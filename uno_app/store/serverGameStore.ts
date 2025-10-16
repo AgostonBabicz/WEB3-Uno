@@ -34,6 +34,21 @@ export const useServerGameStore = defineStore('serverGame', () => {
   const myHand = ref<any[]>([])
   const playable = ref<number[]>([])
   const navigatedGameOver = ref(false)
+  const showPopUpMessage = ref<boolean | null>(null)
+  const popUpMessage = ref<string | null>(null)
+  const popUpTitle = ref<string | null>(null)
+
+  function setMessage(title: string, msg: string) {
+    console.log("MESSAGE")
+    popUpTitle.value = title
+    popUpMessage.value = msg
+    showPopUpMessage.value = true
+  }
+  function clearMessage() {
+    showPopUpMessage.value = null
+    popUpMessage.value = null
+    popUpTitle.value = null
+  }
 
   let updatesSub: { unsubscribe: () => void } | null = null
   let eventsSub: { unsubscribe: () => void } | null = null
@@ -230,7 +245,7 @@ export const useServerGameStore = defineStore('serverGame', () => {
             await refreshMyHand()
           }
         },
-        error: () => {},
+        error: () => { },
       })
 
     eventsSub = apollo
@@ -247,8 +262,11 @@ export const useServerGameStore = defineStore('serverGame', () => {
               router.push({ name: 'GameOver', query: { winner: winnerName } })
             }
           }
+          if (ev.__typename === 'Notice') {
+            setMessage(ev.title, ev.message)
+          }
         },
-        error: () => {},
+        error: () => { },
       })
   }
 
@@ -296,5 +314,11 @@ export const useServerGameStore = defineStore('serverGame', () => {
     playersCount,
     canStartRound,
     canPlayAt,
+    // pop up message
+    setMessage,
+    clearMessage,
+    popUpTitle,
+    popUpMessage,
+    showPopUpMessage
   }
 })

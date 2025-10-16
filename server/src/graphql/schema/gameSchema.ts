@@ -130,6 +130,14 @@ export const gameSchema = gql`
     waitingGames: [Game!]!
   }
 
+  type Notice {
+    gameId: UUID!
+    title: String!
+    message: String!
+    at: DateTime!
+  } 
+
+
   union GameEvent =
     | PlayerJoined
     | GameStarted
@@ -141,6 +149,7 @@ export const gameSchema = gql`
     | RoundEnded
     | GameEnded
     | GameUpdated
+    | Notice
 
   type PlayerJoined {
     gameId: UUID!

@@ -5,6 +5,7 @@ import CardComponent from '../components/CardComponent.vue'
 import Deck from '../components/Deck.vue'
 import type { Color } from '@uno/shared/model/deck'
 import { useServerGameStore } from '../../store/serverGameStore'
+import PopUpMessage from '@/components/PopUpMessage.vue'
 
 const route = useRoute()
 const store = useServerGameStore()
@@ -102,7 +103,13 @@ onMounted(async () => {
         <span class="count">{{ p.handCount }}</span>
       </div>
     </header>
-
+    <PopUpMessage
+      :show="!!store.showPopUpMessage"
+      :title="store.popUpTitle || ''"
+      :message="store.popUpMessage || ''"
+      :timeoutMs="6000"
+      @close="store.clearMessage()"
+    />
     <section class="table">
       <div class="pile discard">
         <CardComponent
@@ -113,8 +120,8 @@ onMounted(async () => {
         />
       </div>
       <div class="pile draw" @click="onDraw" title="Draw">
-        <Deck size="md" />
-        <small class="pile-count">{{ store.game?.currentRound?.drawPileSize ?? 0 }}</small>
+        <Deck size="md" v-if="roundStarted" />
+        <small class="pile-count" v-if="roundStarted">{{ store.game?.currentRound?.drawPileSize ?? 0 }}</small>
       </div>
     </section>
 
