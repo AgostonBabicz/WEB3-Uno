@@ -12,11 +12,15 @@ type SpecialCard = { type: 'SKIP' | 'REVERSE' | 'DRAW', color: Color }
 type WildCard = { type: 'WILD' | 'WILD DRAW' }
 export type ColoredCard = Readonly<NumberCard | SpecialCard>
 
-type TypedCard<T extends Type> =
-    T extends 'NUMBERED' ? NumberCard :
-    T extends 'SKIP' | 'REVERSE' | 'DRAW' ? SpecialCard :
-    T extends 'WILD' | 'WILD DRAW' ? WildCard :
-    never
+type NumKey = Extract<Type, 'NUMBERED'>
+type SpecialKey = Extract<Type, 'SKIP' | 'REVERSE' | 'DRAW'>
+type WildKey = Extract<Type, 'WILD' | 'WILD DRAW'>
+type CardMap =
+  & Record<NumKey, NumberCard>
+  & Record<SpecialKey, SpecialCard>
+  & Record<WildKey, WildCard>
+
+export type TypedCard<T extends Type> = CardMap[T]
 export type Card = Readonly<TypedCard<Type>>
 
 export function toCard(raw: Record<string, string | number>): Card {
