@@ -10,4 +10,5 @@ export interface DeckInterface{
     readonly size: number,
     top:()=>Card | undefined
     getDeckUnderTop:()=>Card[]
+    peek:()=>Card|undefined
 }

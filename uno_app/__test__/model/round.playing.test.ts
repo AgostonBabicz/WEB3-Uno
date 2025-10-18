@@ -316,80 +316,80 @@ describe("Drawing a card", () => {
     })
   })
 
-  // describe("drawing the last card", () => {
-  //   const memento = {
-  //     players: ['a', 'b', 'c', 'd'],
-  //     hands: [
-  //       [{type: 'NUMBERED', color: 'GREEN', number: 4}],
-  //       [{type: 'WILD'}],
-  //       [{type: 'NUMBERED', color: 'GREEN', number: 8}],
-  //       [{type: 'NUMBERED', color: 'GREEN', number: 0}],
-  //     ],
-  //     drawPile: [{type: 'NUMBERED', color: 'YELLOW', number: 3}],
-  //     discardPile: [{type: 'SKIP', color: 'BLUE'}, {type: 'NUMBERED', color: 'BLUE', number: 8}],
-  //     currentColor: 'BLUE',
-  //     currentDirection: 'clockwise',
-  //     dealer: 3,
-  //     playerInTurn: 2
-  //   }
-  //   let mockShuffler = jest.fn(standardShuffler)
-  //   let round: Round = createRoundFromMemento(memento, mockShuffler)
-  //   const top = round.discardPile().top()
-  //   beforeEach(() => {
-  //     mockShuffler = jest.fn(standardShuffler)
-  //     round = createRoundFromMemento(memento, mockShuffler)
-  //     round.draw() // Drawing an unplayable card and emptying the draw pile
-  //   })
-  //   it("shuffles to create a new draw pile", () => {
-  //     expect(mockShuffler).toHaveBeenCalledTimes(1)
-  //   })
-  //   it("retains the top card of the discard pile", () => {
-  //     expect(round.discardPile().top()).toEqual(top)
-  //   })
-  //   it("leaves only the top card in the discard pile", () => {
-  //     expect(round.discardPile().size).toEqual(1)
-  //   })
-  //   it("adds cards in the draw pile", () => {
-  //     expect(round.drawPile().size).toEqual(1)
-  //   })
-  //   it("leaves the cards removed from the discard pile in the draw pile", () => {
-  //     expect(is({type: 'NUMBERED', color: 'BLUE', number: 8})(round.drawPile().peek())).toBeTruthy()
-  //   })
-  // })
+  describe("drawing the last card", () => {
+    const memento = {
+      players: ['a', 'b', 'c', 'd'],
+      hands: [
+        [{type: 'NUMBERED', color: 'GREEN', number: 4}],
+        [{type: 'WILD'}],
+        [{type: 'NUMBERED', color: 'GREEN', number: 8}],
+        [{type: 'NUMBERED', color: 'GREEN', number: 0}],
+      ],
+      drawPile: [{type: 'NUMBERED', color: 'YELLOW', number: 3}],
+      discardPile: [{type: 'SKIP', color: 'BLUE'}, {type: 'NUMBERED', color: 'BLUE', number: 8}],
+      currentColor: 'BLUE',
+      currentDirection: 'clockwise',
+      dealer: 3,
+      playerInTurn: 2
+    }
+    let mockShuffler = jest.fn(standardShuffler)
+    let round: Round = createRoundFromMemento(memento, mockShuffler)
+    const top = round.discardPile().top()
+    beforeEach(() => {
+      mockShuffler = jest.fn(standardShuffler)
+      round = createRoundFromMemento(memento, mockShuffler)
+      round.draw() // Drawing an unplayable card and emptying the draw pile
+    })
+    it("shuffles to create a new draw pile", () => {
+      expect(mockShuffler).toHaveBeenCalledTimes(1)
+    })
+    it("retains the top card of the discard pile", () => {
+      expect(round.discardPile().top()).toEqual(top)
+    })
+    it("leaves only the top card in the discard pile", () => {
+      expect(round.discardPile().size).toEqual(1)
+    })
+    it("adds cards in the draw pile", () => {
+      expect(round.drawPile().size).toEqual(1)
+    })
+    it("leaves the cards removed from the discard pile in the draw pile", () => {
+      expect(is({type: 'NUMBERED', color: 'BLUE', number: 8})(round.drawPile().peek())).toBeTruthy()
+    })
+  })
 
-//   describe("when drawing because of a card", () => {
-//     const memento = {
-//       players: ['a', 'b', 'c', 'd'],
-//       hands: [
-//         [{type: 'NUMBERED', color: 'GREEN', number: 4}],
-//         [{type: 'REVERSE', color: 'GREEN'}, {type: 'DRAW', color: 'BLUE'}],
-//         [{type: 'NUMBERED', color: 'GREEN', number: 8}],
-//         [{type: 'NUMBERED', color: 'GREEN', number: 0}],
-//       ],
-//       drawPile: [{type: 'NUMBERED', color: 'GREEN', number: 0}],
-//       discardPile: [{type: 'NUMBERED', color: 'BLUE', number: 3}, {type: 'NUMBERED', color: 'BLUE', number: 8}],
-//       currentColor: 'BLUE',
-//       currentDirection: 'clockwise',
-//       dealer: 3,
-//       playerInTurn: 1
-//     }
-//     const round = createRoundFromMemento(memento)
-//     round.play(1)
-//     expect(round.playerHand(2).length).toEqual(3)
-//     expect(round.discardPile().size).toEqual(1)
-//     expect(round.drawPile().size).toEqual(1)
-//   })
-// })
+  describe("when drawing because of a card", () => {
+    const memento = {
+      players: ['a', 'b', 'c', 'd'],
+      hands: [
+        [{type: 'NUMBERED', color: 'GREEN', number: 4}],
+        [{type: 'REVERSE', color: 'GREEN'}, {type: 'DRAW', color: 'BLUE'}],
+        [{type: 'NUMBERED', color: 'GREEN', number: 8}],
+        [{type: 'NUMBERED', color: 'GREEN', number: 0}],
+      ],
+      drawPile: [{type: 'NUMBERED', color: 'GREEN', number: 0}],
+      discardPile: [{type: 'NUMBERED', color: 'BLUE', number: 3}, {type: 'NUMBERED', color: 'BLUE', number: 8}],
+      currentColor: 'BLUE',
+      currentDirection: 'clockwise',
+      dealer: 3,
+      playerInTurn: 1
+    }
+    const round = createRoundFromMemento(memento)
+    round.play(1)
+    expect(round.playerHand(2).length).toEqual(3)
+    expect(round.discardPile().size).toEqual(1)
+    expect(round.drawPile().size).toEqual(1)
+  })
+})
 
-// describe("special 2-player rules", () => {
-//   test("playing a reverse card works as a skip card", () => {
-//     const shuffler = shuffleBuilder({players: 2, cardsPerPlayer: 7})
-//       .discard().is({type:'NUMBERED', color: 'BLUE'})
-//       .hand(0).is({type: 'REVERSE', color: 'BLUE'})
-//       .build()
-//     const round = createRound({players: ['a', 'b'], dealer: 1, shuffler})
-//     expect(round.playerInTurn()).toEqual(0)
-//     round.play(0)
-//     expect(round.playerInTurn()).toEqual(0)
-//   })
+describe("special 2-player rules", () => {
+  test("playing a reverse card works as a skip card", () => {
+    const shuffler = shuffleBuilder({players: 2, cardsPerPlayer: 7})
+      .discard().is({type:'NUMBERED', color: 'BLUE'})
+      .hand(0).is({type: 'REVERSE', color: 'BLUE'})
+      .build()
+    const round = createRound({players: ['a', 'b'], dealer: 1, shuffler})
+    expect(round.playerInTurn()).toEqual(0)
+    round.play(0)
+    expect(round.playerInTurn()).toEqual(0)
+  })
 })

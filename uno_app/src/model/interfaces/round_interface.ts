@@ -16,5 +16,4 @@ export interface RoundInterface {
     score :()=> number|undefined
     toMemento:()=>any
     sayUno:(player:number)=>void
-    // onEnd:(cb:(e:{winner:number})=>void)=>void
 }

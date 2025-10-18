@@ -1,11 +1,10 @@
 import { Shuffler } from "../utils/random_utils";
 import { DeckInterface } from "./interfaces/deck_interface";
 
-// predicates was crying about it
 export type Type = 'NUMBERED' | 'SKIP' | 'REVERSE' | 'DRAW' | 'WILD' | 'WILD DRAW'
-export const colors = ['BLUE','RED','GREEN','YELLOW'] as const;
+export const colors = ['BLUE', 'RED', 'GREEN', 'YELLOW'] as const;
 export type Color = typeof colors[number];
-export const cardNumbers = [0,1,2,3,4,5,6,7,8,9] as const;
+export const cardNumbers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 export type CardNumber = typeof cardNumbers[number];
 
 type NumberCard = { type: 'NUMBERED', color: Color, number: CardNumber }
@@ -61,7 +60,6 @@ export function isColored(c: Card): c is ColoredCard {
 
 export class Deck implements DeckInterface {
     private deck: Card[]
-    // private memento: Record<string, string | number>[]
     constructor(cards: Card[] | Record<string, string | number>[]) {
         this.deck = (cards).map(toCard);
     }
@@ -81,8 +79,8 @@ export class Deck implements DeckInterface {
         return new Deck(newDeck);
     }
     toMemento(): Array<Record<string, string | number>> {
-    return this.deck.map(c => ({ ...c }));
-  }
+        return this.deck.map(c => ({ ...c }));
+    }
     getDeck(): Card[] {
         return this.deck.slice()
     }
@@ -92,8 +90,11 @@ export class Deck implements DeckInterface {
     top(): Card | undefined {
         return this.deck[0];
     }
-    getDeckUnderTop():Card[]{
-        return this.deck.splice(1,this.deck.length-1)
+    peek(): Card | undefined {
+        return this.top();
+    }
+    getDeckUnderTop(): Card[] {
+        return this.deck.splice(1, this.deck.length - 1)
     }
 }
 
