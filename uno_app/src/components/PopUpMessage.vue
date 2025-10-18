@@ -50,10 +50,13 @@ onBeforeUnmount(clearTimer)
   padding: 10px 12px;
   margin: 6px 0 10px;
   border-radius: 12px;
-  background: rgba(255,255,255,0.1);
+  background: rgba(0, 0, 0, 1);
   backdrop-filter: blur(4px);
   border: 1.5px solid rgba(255,255,255,0.35);
   color: #fff;
+  position: absolute;
+
+  z-index: 10 ;
 }
 .title {
   margin: 0;

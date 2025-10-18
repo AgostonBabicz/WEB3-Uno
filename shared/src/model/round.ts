@@ -1,4 +1,3 @@
-//took out unused imports
 import { mod } from '../utils/mod'
 import { Shuffler } from '../utils/random_utils'
 import { Card, Deck, createInitialDeck, Color, isColored } from './deck'
@@ -22,14 +21,13 @@ export class Round implements RoundInterface {
   private resolving: boolean = false
 
   private lastActor: number | null = null
-  private lastUnoSayer: number | null = null //most recen uno sayer (any1)
+  private lastUnoSayer: number | null = null //most recen uno sayer (anyone)
   private pendingUnoAccused: number | null = null //who just went to 1 card
   private unoProtectedForWindow = false
   private unoSayersSinceLastAction = new Set<number>()
 
   private endCallbacks: Array<(e: { winner: number }) => void> = []
 
-  //just for tests ig idk how else
   private ensureUnoState(): void {
     if (this.pendingUnoAccused === undefined) this.pendingUnoAccused = null
     if (this.unoProtectedForWindow === undefined) this.unoProtectedForWindow = false

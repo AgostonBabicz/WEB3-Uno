@@ -73,7 +73,9 @@ export const useServerGameStore = defineStore('serverGame', () => {
     game.value = g
     navigatedGameOver.value = false
 
+ setTimeout(async () => {
     await subscribeAll()
+  }, 5 * 1000) 
   }
 
   async function joinLobby(id: string, myName: string) {
@@ -114,7 +116,6 @@ export const useServerGameStore = defineStore('serverGame', () => {
 
   async function startRound() {
     if (!gameId.value) return
-
     const { data: gq } = await apollo.query({
       query: GET_GAME,
       variables: { gameId: gameId.value },
@@ -135,6 +136,7 @@ export const useServerGameStore = defineStore('serverGame', () => {
     if (data?.startRound) {
       game.value = data.startRound
       await refreshMyHand()
+      await subscribeAll()
     }
   }
 
@@ -230,6 +232,7 @@ export const useServerGameStore = defineStore('serverGame', () => {
   // --------- Subscriptions ----------
 
   async function subscribeAll() {
+    console.log("SUBSCRIBE ALL", gameId.value, updatesSub, eventsSub)
     if (!gameId.value) return
     updatesSub?.unsubscribe()
     eventsSub?.unsubscribe()

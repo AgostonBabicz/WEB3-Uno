@@ -21,9 +21,6 @@ export class Game implements GameInterface {
     cardsPerPlayer: number,
     options?: { deferFirstRound?: boolean }
   ) {
-    // if (players.length < 2) {
-    //   throw new Error('A Game requires at least 2 players')
-    // }
     if (targetScore <= 0) {
       throw new Error('A Game requires a target score of more than 0')
     }
@@ -56,9 +53,6 @@ export class Game implements GameInterface {
       this.presentRound = new Round(this.players, dealer, this.shuffler, this.cardsPerPlayer)
       this.attachRoundHandlers()
     }
-    // const dealer = this.randomizer(this.playerCount)
-    // this.presentRound = new Round(players, dealer, this.shuffler, this.cardsPerPlayer)
-    // this.attachRoundHandlers()
   }
   public addPlayer(name: string): void {
     if (this.presentRound) {

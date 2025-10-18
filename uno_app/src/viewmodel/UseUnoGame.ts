@@ -26,9 +26,8 @@ function clearMessage() {
   popUpTitle.value = null
 }
 
-//kept this for reference, maybe use pinia maybe not
 export function useUnoGame(opts: Opts) {
-  // model, reactive box ? so vue tracks the reference and our getters read 'fresh' state with game.value
+  // model, reactive box so vue tracks the reference and our getters read 'fresh' state with game.value
   const game = ref(
     new Game(
       opts.players,
@@ -135,7 +134,6 @@ export function useUnoGame(opts: Opts) {
     return r.catchUnoFailure({ accuser, accused })
   }
 
-  // ----------- bot stuff --------
   // bots are all players except the last one me since router builds players this way: [...bots, me]
   function isBot(ix: number) {
     return ix >= 0 && ix < opts.players.length - 1
@@ -166,12 +164,12 @@ export function useUnoGame(opts: Opts) {
       try {
         accuse(ix, t)
       } catch {
-        /* ignore */
+        // ignore
       }
     }
   }
-  //ptt bot:
-  // One bot turn. Returns true if it actually played/drew (i.e., it was a bot’s turn).
+
+  // Returns true if it actually played/drew
   async function botTakeTurn(): Promise<boolean> {
     const r = round()
     if (!r) return false
@@ -182,7 +180,7 @@ export function useUnoGame(opts: Opts) {
     // slight delay to feel alive
     await new Promise((res) => setTimeout(res, 850))
 
-    // opportunistic accusation before acting, proably bot should watch this outside of its turn too?
+    // opportunistic accusation before acting
     botTryAccuse(ix)
 
     // pick first legal card, else draw

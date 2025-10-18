@@ -9,8 +9,8 @@
     "start": "node .build/src/index.js",
     "format": "npx prettier --write .",
     "migrate:make": "knex migrate:make",
-    "migrate:latest": "knex migrate:latest",
-    "migrate:rollback": "knex migrate:rollback",
+    "migrate:latest": "node --require ts-node/register ./node_modules/knex/bin/cli.js migrate:latest --knexfile knexfile.ts",
+    "migrate:rollback": "node --require ts-node/register ./node_modules/knex/bin/cli.js migrate:rollback --knexfile knexfile.ts",
     "seed:make": "knex seed:make",
     "seed:run": "knex seed:run"
   },
@@ -28,11 +28,9 @@
     "graphql-subscriptions": "^3.0.0",
     "graphql-tag": "^2.12.6",
     "graphql-ws": "^6.0.6",
-    "knex": "^3.1.0",
     "pg": "^8.16.3",
     "prettier": "^3.6.2",
     "sql-template-strings": "^2.2.2",
-    "ts-node": "^10.9.2",
     "ws": "^8.18.3"
   },
   "devDependencies": {
@@ -40,12 +38,14 @@
     "@types/body-parser": "^1.19.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
-    "@types/node": "^24.7.0",
+    "@types/node": "^24.8.1",
     "@types/pg": "^8.15.5",
     "@types/ws": "^8.18.1",
     "esbuild": "^0.25.10",
     "express": "^5.1.0",
     "graphql": "^16.11.0",
+    "knex": "^3.1.0",
+    "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.9.3"
   }

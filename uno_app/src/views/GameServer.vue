@@ -53,7 +53,10 @@ async function onStartRound() {
 
 onMounted(async () => {
   const id = (route.query.gameId as string) || ''
-  if (id && store.gameId === id) {
+  if (id) {
+    // ensure the store knows which game we're viewing and subscribe to events
+    if (store.gameId !== id) store.gameId = id
+    await store.subscribeAll().catch(() => {})
     await store.refreshMyHand().catch(() => {})
   }
 })

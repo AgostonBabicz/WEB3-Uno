@@ -91,7 +91,7 @@ function accuseOpponent(opIx: number) {
   } catch { }
 }
 
-// Minimal bot loop: keep taking bot turns until it's your turn or round ends
+// bot loop keep taking bot turns until it s my turn or round ends
 let botsBusy = false
 async function pumpBots() {
   if (botsBusy) return
@@ -109,13 +109,10 @@ async function pumpBots() {
   }
 }
 
-//actually kick off the bot loop, PTT is cracked out this was copilot
 onMounted(() => {
   void pumpBots()
 })
 </script>
-
-<!-- Full PTT below-->
 <template>
   <main class="play uno-theme" :class="{ waiting: !myTurn() }">
     <div class="target-score">Target: {{ props.targetScore ?? 500 }}</div>
@@ -142,7 +139,6 @@ onMounted(() => {
       </div>
     </header>
 
-    <!-- Center table -->
     <section class="table">
       <div class="pile discard">
         <CardComponent v-if="vm.topDiscard()" :type="vm.topDiscard()!.type" :color="vm.topDiscard()!.type === 'NUMBERED' ||
@@ -160,7 +156,6 @@ onMounted(() => {
       </div>
     </section>
 
-    <!-- Your hand -->
     <footer class="hand" :class="{ playing: myTurn() }">
       <div class="column">
         <span class="name">{{ players[meIx] }}</span>
@@ -185,7 +180,6 @@ onMounted(() => {
       </div>
     </footer>
 
-    <!-- WILD color picker -->
     <div v-if="showColorPicker !== null" class="color-picker-backdrop">
       <div class="color-picker">
         <button v-for="c in COLORS" :key="c" class="color-chip" :data-color="c.toLowerCase()" @click="pickColor(c)">

@@ -1,7 +1,6 @@
 import { Shuffler } from '../utils/random_utils'
 import { DeckInterface } from './interfaces/deck_interface'
 
-// predicates was crying about it
 export type Type = 'NUMBERED' | 'SKIP' | 'REVERSE' | 'DRAW' | 'WILD' | 'WILD_DRAW'
 export const colors = ['BLUE', 'RED', 'GREEN', 'YELLOW'] as const
 export type Color = (typeof colors)[number]
@@ -67,7 +66,6 @@ export function isColored(c: Card): c is ColoredCard {
 
 export class Deck implements DeckInterface {
   private deck: Card[]
-  // private memento: Record<string, string | number>[]
   constructor(cards: Card[] | Record<string, string | number>[]) {
     this.deck = cards.map(toCard)
   }

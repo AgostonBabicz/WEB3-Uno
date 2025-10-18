@@ -184,7 +184,7 @@ export const useUnoGameStore = defineStore('unoGame', () => {
             )
           : null
       } catch (e) {
-        /* ignore, just means bot was wrong */
+        // ignore, just means bot was wrong
       }
     }
   }
