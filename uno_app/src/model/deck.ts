@@ -1,5 +1,5 @@
 import { Shuffler } from "../utils/random_utils";
-import { DeckInterface } from "./interfaces/deck_interface";
+import { Deck, MakeDeck } from "./interfaces/deck_interface";
 
 export type Type = 'NUMBERED' | 'SKIP' | 'REVERSE' | 'DRAW' | 'WILD' | 'WILD DRAW'
 export const colors = ['BLUE', 'RED', 'GREEN', 'YELLOW'] as const;
@@ -23,6 +23,7 @@ type CardMap =
 export type TypedCard<T extends Type> = CardMap[T]
 export type Card = Readonly<TypedCard<Type>>
 
+export const makeDeck: MakeDeck = cards => new DeckImplementation(cards);
 export function toCard(raw: Record<string, string | number>): Card {
     const t = raw.type;
     if (t === 'NUMBERED') {
@@ -62,7 +63,7 @@ export function isColored(c: Card): c is ColoredCard {
     return c.type !== 'WILD' && c.type !== 'WILD DRAW'
 }
 
-export class Deck implements DeckInterface {
+export class DeckImplementation implements Deck {
     private deck: Card[]
     constructor(cards: Card[] | Record<string, string | number>[]) {
         this.deck = (cards).map(toCard);
@@ -80,7 +81,7 @@ export class Deck implements DeckInterface {
     }
     filter(predicate: (card: Card) => boolean): Deck {
         const newDeck: Card[] = this.deck.filter(predicate);
-        return new Deck(newDeck);
+        return new DeckImplementation(newDeck);
     }
     toMemento(): Array<Record<string, string | number>> {
         return this.deck.map(c => ({ ...c }));
@@ -118,7 +119,7 @@ export function hasNumber(card: Card, number: number) {
     return false
 }
 
-export function createInitialDeck(): Deck {
+export function createInitialDeck(make: MakeDeck = makeDeck): Deck {
     const deck: Card[] = []
 
     for (const n of cardNumbers.slice(1)) {
@@ -146,6 +147,7 @@ export function createInitialDeck(): Deck {
     deck.push({ type: 'NUMBERED', color: 'GREEN', number: 0 })
     deck.push({ type: 'NUMBERED', color: 'YELLOW', number: 0 })
 
-    return new Deck(deck)
+    return make(deck);
 }
+
 

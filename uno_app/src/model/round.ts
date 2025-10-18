@@ -1,11 +1,13 @@
 //took out unused imports
 import { mod } from "../utils/mod";
 import { Shuffler } from "../utils/random_utils";
-import { Card, Deck, createInitialDeck, Color, isColored } from "./deck";
-import { RoundInterface } from "./interfaces/round_interface";
-import { PlayerHand } from "./player_hand";
+import { Card, createInitialDeck, Color, isColored, makeDeck } from "./deck";
+import { Deck } from "./interfaces/deck_interface";
+import { MakeRound, Round } from "./interfaces/round_interface";
+import { PlayerHand } from "./interfaces/player_hand_interface";
+import { makePlayerHand } from "./player_hand";
 
-export class Round implements RoundInterface {
+export class RoundImplementation implements Round {
   playerCount: number
   private players: string[]
   private currentPlayerIndex: number
@@ -44,7 +46,7 @@ export class Round implements RoundInterface {
   isWildTop = () => this.isWild(this.discardDeck.top()!.type) || this.isWild(this.drawDeck.top()!.type);
 
   dealAll = () => {
-    this.playerHands = Array.from({ length: this.playerCount }, () => new PlayerHand());
+    this.playerHands = Array.from({ length: this.playerCount }, () => makePlayerHand());
     const n = this.cardsPerPlay ?? 7;
     for (let p = 0; p < this.playerCount; p++) {
       for (let j = 0; j < n; j++) {
@@ -65,7 +67,7 @@ export class Round implements RoundInterface {
     this.dealer = dealer
     this.currentPlayerIndex = dealer
     this.cardsPerPlay = cardsPerPlay
-    this.discardDeck = new Deck([])
+    this.discardDeck = makeDeck([])
     this.playerHands = []
     this.shuffler = shuffler
 
@@ -76,11 +78,11 @@ export class Round implements RoundInterface {
     while (true) {
       const top = this.drawDeck.deal();
       if (!top) throw new Error("Not enough cards");
-      this.discardDeck = new Deck([top]);
+      this.discardDeck = makeDeck([top]);
 
       //discardDeck.top is literally top that was just dealt
       if (this.isWild(top.type)) {
-        this.drawDeck = new Deck([top, ...this.drawDeck.getDeck()])
+        this.drawDeck = makeDeck([top, ...this.drawDeck.getDeck()])
         this.drawDeck.shuffle(this.shuffler);
         continue;
       }
@@ -243,7 +245,7 @@ export class Round implements RoundInterface {
       }
 
       this.playerHands[p].playCard(cardIx)
-      this.discardDeck = new Deck([playedCard, ...this.discardDeck.getDeck()])
+      this.discardDeck = makeDeck([playedCard, ...this.discardDeck.getDeck()])
       if (isColored(playedCard)) {
         this.currentColor = playedCard.color;
       } else {
@@ -308,8 +310,8 @@ export class Round implements RoundInterface {
         const top = this.discardDeck.top();
         const underTop = this.discardDeck.getDeckUnderTop();
         if (!underTop || underTop.length === 0) throw new Error("No cards left to draw");
-        this.discardDeck = new Deck(top ? [top] : []);
-        this.drawDeck = new Deck(underTop);
+        this.discardDeck = makeDeck(top ? [top] : []);
+        this.drawDeck = makeDeck(underTop);
         this.drawDeck.shuffle(this.shuffler!);
         c = this.drawDeck.deal();
         if (!c) throw new Error("No cards left to draw");
@@ -341,8 +343,8 @@ export class Round implements RoundInterface {
       const top = this.discardDeck.top();
       const underTop = this.discardDeck.getDeckUnderTop();
       if (!underTop || underTop.length === 0) throw new Error("No cards left to draw");
-      this.discardDeck = new Deck(top ? [top] : []);
-      this.drawDeck = new Deck(underTop);
+      this.discardDeck = makeDeck(top ? [top] : []);
+      this.drawDeck = makeDeck(underTop);
       this.drawDeck.shuffle(this.shuffler!);
     }
     if (!this.canPlay(this.playerHands[p].size() - 1)) {
@@ -455,3 +457,5 @@ export class Round implements RoundInterface {
     }
   }
 }
+
+export const makeRound:MakeRound = (players: string[], dealer: number, shuffler: Shuffler<Card>, cardsPerPlay: number) => new RoundImplementation(players,dealer,shuffler,cardsPerPlay)

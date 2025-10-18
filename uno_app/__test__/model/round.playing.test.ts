@@ -1,9 +1,9 @@
 import { describe, it, test, expect, beforeEach, jest } from '@jest/globals'
 import { createRound, createRoundFromMemento} from '../utils/test_adapter'
-import { Round } from '../../src/model/round'
 import { shuffleBuilder } from '../utils/shuffling'
 import { is } from '../utils/predicates'
 import { standardShuffler } from '../../src/utils/random_utils'
+import { Round } from '../../src/model/interfaces/round_interface'
 
 describe("Playing a card", () => {
   it("throws on illegal plays", () => {

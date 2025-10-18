@@ -1,9 +1,10 @@
 import { Randomizer, Shuffler } from "../utils/random_utils";
-import { Card, Color, Deck } from "./deck";
-import { GameInterface } from "./interfaces/game_interface";
-import { Round } from "./round";
+import { Card, Color } from "./deck";
+import { Game, MakeGame } from "./interfaces/game_interface";
+import { Round } from "./interfaces/round_interface";
+import { makeRound } from "./round";
 
-export class Game implements GameInterface {
+export class GameImplementation implements Game {
     public playerCount: Readonly<number>
     public targetScore: Readonly<number>
     private players: string[]
@@ -42,7 +43,7 @@ export class Game implements GameInterface {
             throw new Error("There can be at most one winner")
         }
         const dealer = this.randomizer(this.playerCount)
-        this.presentRound = new Round(players, dealer, this.shuffler, this.cardsPerPlayer)
+        this.presentRound = makeRound(players, dealer, this.shuffler, this.cardsPerPlayer)
         this.attachRoundHandlers();
     }
     player(player: number): string {
@@ -93,7 +94,7 @@ export class Game implements GameInterface {
     }
     private startNewRound() {
         const dealer = this.randomizer(this.playerCount);
-        this.presentRound = new Round(this.players, dealer, this.shuffler, this.cardsPerPlayer);
+        this.presentRound = makeRound(this.players, dealer, this.shuffler, this.cardsPerPlayer);
     }
 
 }
@@ -115,3 +116,5 @@ export type GameMemento = {
         playerInTurn: number
     }
 }
+
+export const makeGame:MakeGame = (randomizer: Randomizer, shuffler: Shuffler<Card>, cardsPerPlayer: number, players: string[]|undefined, targetScore: number|undefined) => new GameImplementation(players,targetScore,randomizer,shuffler,cardsPerPlayer)

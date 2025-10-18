@@ -1,52 +1,41 @@
-import { Card, cardNumbers, colors, Deck, toCard } from '../../src/model/deck'
-import { PlayerHand } from '../../src/model/player_hand'
-import { Round } from '../../src/model/round'
-import { Game } from '../../src/model/uno'
-import { Randomizer, Shuffler, standardRandomizer, standardShuffler } from '../../src/utils/random_utils'
+import { 
+  Card,
+  toCard,
+  createInitialDeck as createInitial,
+  makeDeck
+} from '../../src/model/deck';
 
+import type { Deck } from '../../src/model/interfaces/deck_interface';
+import type { Game } from '../../src/model/interfaces/game_interface';
+import type { Round } from '../../src/model/interfaces/round_interface';
 
-//Fill out the empty functions
+import { makeRound } from '../../src/model/round';
+import { makePlayerHand, PlayerHand } from '../../src/model/player_hand';
+import { makeGame } from '../../src/model/uno';
+
+import {
+  Randomizer,
+  Shuffler,
+  standardRandomizer,
+  standardShuffler
+} from '../../src/utils/random_utils';
+
+// ===== Deck helpers =====
 export function createInitialDeck(): Deck {
-  const deck: Card[] = []
-
-  for (const n of cardNumbers.slice(1)) {
-    for (const color of colors) {
-      deck.push({ type: 'NUMBERED', color, number: n })
-      deck.push({ type: 'NUMBERED', color, number: n })
-    }
-  }
-
-  for (const color of colors) {
-    for (let j = 0; j < 2; j++) {
-      deck.push({ type: 'SKIP', color })
-      deck.push({ type: 'REVERSE', color })
-      deck.push({ type: 'DRAW', color })
-    }
-  }
-
-  for (let i = 0; i < 4; i++) {
-    deck.push({ type: 'WILD' })
-    deck.push({ type: 'WILD DRAW' })
-  }
-
-  deck.push({ type: 'NUMBERED', color: 'BLUE', number: 0 })
-  deck.push({ type: 'NUMBERED', color: 'RED', number: 0 })
-  deck.push({ type: 'NUMBERED', color: 'GREEN', number: 0 })
-  deck.push({ type: 'NUMBERED', color: 'YELLOW', number: 0 })
-
-  return new Deck(deck)
+  return createInitial();
 }
 
-export function createDeckFromMemento(cards: Record<string, string | number>[]): Deck {
-  return new Deck(cards);
+export function createDeckFromMemento(cards: ReadonlyArray<Record<string, string | number>>): Deck {
+  return makeDeck([...cards]);
 }
 
+// ===== Round helpers =====
 export type HandConfig = {
-  players: string[]
-  dealer: number
-  shuffler?: Shuffler<Card>
-  cardsPerPlayer?: number
-}
+  players: string[];
+  dealer: number;
+  shuffler?: Shuffler<Card>;
+  cardsPerPlayer?: number;
+};
 
 export function createRound({
   players,
@@ -54,118 +43,158 @@ export function createRound({
   shuffler = standardShuffler,
   cardsPerPlayer = 7
 }: HandConfig): Round {
-  return new Round(players, dealer, shuffler, cardsPerPlayer)
+  return makeRound(players, dealer, shuffler, cardsPerPlayer);
 }
-
 
 export function createRoundFromMemento(
   memento: any,
   shuffler: Shuffler<Card> = standardShuffler
 ): Round {
-  // ===== validations =====
-  if (!Array.isArray(memento.players) || memento.players.length < 2) {
+  // ---------- strict validations ----------
+  // players
+  if (!Array.isArray(memento?.players)) {
+    throw new Error("Invalid memento: players must be an array");
+  }
+  const players: unknown[] = memento.players;
+  if (players.length < 2) {
     throw new Error("Invalid memento: need at least 2 players");
   }
-  if (!Array.isArray(memento.hands) || memento.hands.length !== memento.players.length) {
-    throw new Error("Invalid memento: hands must match players");
+  if (players.length > 10) {
+    throw new Error("Invalid memento: at most 10 players");
   }
 
-  const winners = memento.hands.filter((h: any[]) => h.length === 0).length;
-  if (winners > 1) throw new Error("Invalid memento: more than one winner");
+  // hands
+  if (!Array.isArray(memento.hands)) {
+    throw new Error("Invalid memento: hands must be an array");
+  }
+  const hands: unknown[] = memento.hands;
+  if (hands.length !== players.length) {
+    throw new Error("Invalid memento: hands must match players");
+  }
+  // count winners and ensure each hand is an array
+  let winners = 0;
+  for (const h of hands) {
+    if (!Array.isArray(h)) {
+      throw new Error("Invalid memento: each hand must be an array");
+    }
+    if (h.length === 0) winners++;
+  }
+  if (winners > 1) {
+    throw new Error("Invalid memento: more than one winner");
+  }
 
+  // piles
   if (!Array.isArray(memento.discardPile) || memento.discardPile.length === 0) {
     throw new Error("Invalid memento: empty discard pile");
   }
-
-  const validColors = ["RED", "YELLOW", "GREEN", "BLUE"];
-  if (memento.currentColor && !validColors.includes(memento.currentColor)) {
-    throw new Error("Invalid memento: currentColor");
+  if (!Array.isArray(memento.drawPile)) {
+    throw new Error("Invalid memento: drawPile must be an array");
   }
 
-  const top = toCard(memento.discardPile[0]);
-  function hasColor(card: any): card is { color: string } {
-    return typeof card.color === "string";
-  }
-  if (hasColor(top) && memento.currentColor && top.color !== memento.currentColor) {
-    throw new Error("Invalid memento: inconsistent currentColor");
+  // color rules
+  const validColors = ['RED', 'YELLOW', 'GREEN', 'BLUE'] as const;
+  if (memento.currentColor !== undefined && memento.currentColor !== null) {
+    if (!validColors.includes(memento.currentColor)) {
+      throw new Error("Invalid memento: currentColor");
+    }
+    const top = toCard(memento.discardPile[0]);
+    if ((top as any).color && (top as any).color !== memento.currentColor) {
+      throw new Error("Invalid memento: inconsistent currentColor");
+    }
   }
 
-  if (typeof memento.dealer !== "number" ||
-    memento.dealer < 0 ||
-    memento.dealer >= memento.players.length) {
+  // dealer
+  if (typeof memento.dealer !== 'number') {
+    throw new Error("Invalid memento: dealer must be a number");
+  }
+  if (memento.dealer < 0 || memento.dealer >= players.length) {
     throw new Error("Invalid memento: dealer out of bounds");
   }
 
-  const gameFinished = winners === 1;
-  if (!gameFinished) {
-    if (typeof memento.playerInTurn !== "number") {
+  // finished vs playerInTurn
+  const finished = winners === 1;
+  if (!finished) {
+    if (typeof memento.playerInTurn !== 'number') {
       throw new Error("Invalid memento: missing playerInTurn");
     }
-    if (
-      memento.playerInTurn < 0 ||
-      memento.playerInTurn >= memento.players.length
-    ) {
+    if (memento.playerInTurn < 0 || memento.playerInTurn >= players.length) {
       throw new Error("Invalid memento: playerInTurn out of bounds");
     }
   }
 
-  // ===== hydrate Round =====
-  const round = Object.create(Round.prototype) as Round;
-  (round as any).players = [...memento.players];
-  round.playerCount = memento.players.length;
-  round.dealer = memento.dealer;
-  (round as any).currentPlayerIndex = memento.playerInTurn;
-  (round as any).direction =
-    memento.currentDirection === "counterclockwise" ? -1 : +1;
-  (round as any).currentDirection = memento.currentDirection === "counterclockwise" ? "counterclockwise" : "clockwise";
-  (round as any).currentColor = memento.currentColor ?? "";
+  // ---------- build a real Round without constructor shuffle ----------
+  const noopShuffler: Shuffler<Card> = () => {};
+  const round = makeRound(memento.players, memento.dealer, noopShuffler, 7);
 
-  (round as any).discardDeck = new Deck((memento.discardPile || []).map(toCard));
-  (round as any).drawDeck = new Deck((memento.drawPile || []).map(toCard));
+  // ---------- hydrate state ----------
+  (round as any).players = [...memento.players];
+  (round as any).playerCount = memento.players.length;
+  (round as any).dealer = memento.dealer;
+
+  (round as any).direction =
+    memento.currentDirection === 'counterclockwise' ? -1 : +1;
+  (round as any).currentDirection =
+    memento.currentDirection === 'counterclockwise'
+      ? 'counterclockwise'
+      : 'clockwise';
+  (round as any).currentColor = memento.currentColor ?? '';
+
+  (round as any).discardDeck = makeDeck([...(memento.discardPile || [])]);
+  (round as any).drawDeck = makeDeck([...(memento.drawPile || [])]);
 
   (round as any).playerHands = (memento.hands || []).map(
-    (h: Array<Record<string, string | number>>) => new PlayerHand(h.map(toCard))
+    (h: ReadonlyArray<Record<string, string | number>>) =>
+      makePlayerHand(h.map(toCard))
   );
 
+  // real shuffler only after hydration so constructor doesn’t trigger it
   (round as any).shuffler = shuffler;
+
   (round as any).cardsPerPlay = undefined;
   (round as any).startResolved = true;
-  (round as any).unoDeclared = new Set(memento.unoDeclared || []);
-  const modFn = (n: number, m: number) => ((n % m) + m) % m;
+  (round as any).currentPlayerIndex = finished ? undefined : memento.playerInTurn;
+
+  // UNO book-keeping expected by methods
+  const mod = (n: number, m: number) => ((n % m) + m) % m;
   const derivedPrev =
-    typeof memento.playerInTurn === "number"
-      ? modFn(memento.playerInTurn - ((round as any).direction), memento.players.length)
+    typeof memento.playerInTurn === 'number'
+      ? mod(memento.playerInTurn - (round as any).direction, memento.players.length)
       : null;
+
   (round as any).lastActor =
-    typeof memento.lastActor === "number" || memento.lastActor === null
+    typeof memento.lastActor === 'number' || memento.lastActor === null
       ? memento.lastActor
       : derivedPrev;
-  (round as any).lastUnoSayer =
-  typeof memento.lastUnoSayer === "number" || memento.lastUnoSayer === null
-    ? memento.lastUnoSayer
-    : null;  
 
-  //memento tests bypass constructor we need to init this so its not undefined, [] is the default can be interactied with --> good👍
+  (round as any).lastUnoSayer =
+    typeof memento.lastUnoSayer === 'number' || memento.lastUnoSayer === null
+      ? memento.lastUnoSayer
+      : null;
+
+  (round as any).pendingUnoAccused = null;
+  (round as any).unoProtectedForWindow = false;
+  (round as any).unoSayersSinceLastAction = new Set<number>();
   (round as any).endCallbacks = [];
 
   return round;
 }
 
+// ===== Game helpers =====
 export type GameConfig = {
-  players: string[]
-  targetScore: number
-  randomizer: Randomizer
-  shuffler: Shuffler<Card>
-  cardsPerPlayer: number
-}
+  players: string[];
+  targetScore: number;
+  randomizer: Randomizer;
+  shuffler: Shuffler<Card>;
+  cardsPerPlayer: number;
+};
 
 export function createGame(props: Partial<GameConfig>): Game {
-  return new Game(
-    props.players,
-    props.targetScore,
+  return makeGame(
     props.randomizer ?? standardRandomizer,
     props.shuffler ?? standardShuffler,
-    props.cardsPerPlayer ?? 7
+    props.cardsPerPlayer ?? 7,
+    props.players,
+    props.targetScore
   );
 }
 
@@ -174,47 +203,50 @@ export function createGameFromMemento(
   randomizer: Randomizer = standardRandomizer,
   shuffler: Shuffler<Card> = standardShuffler
 ): Game {
+  // ----- validations -----
   if (!Array.isArray(memento.players) || memento.players.length < 2) {
-    throw new Error("Invalid game memento: need at least 2 players");
+    throw new Error('Invalid game memento: need at least 2 players');
   }
   if (!Array.isArray(memento.scores) || memento.scores.length !== memento.players.length) {
-    throw new Error("Invalid game memento: scores must match players length");
+    throw new Error('Invalid game memento: scores must match players length');
   }
-  if (typeof memento.targetScore !== "number" || memento.targetScore <= 0) {
-    throw new Error("Invalid game memento: targetScore must be > 0");
+  if (typeof memento.targetScore !== 'number' || memento.targetScore <= 0) {
+    throw new Error('Invalid game memento: targetScore must be > 0');
   }
   if (memento.scores.some((s: number) => s < 0)) {
-    throw new Error("Invalid game memento: scores must be non-negative");
+    throw new Error('Invalid game memento: scores must be non-negative');
   }
   const winners = memento.scores.filter((s: number) => s >= memento.targetScore).length;
   if (winners > 1) {
-    throw new Error("Invalid game memento: more than one winner");
+    throw new Error('Invalid game memento: more than one winner');
   }
   const finished = memento.scores.some((s: number) => s >= memento.targetScore);
   if (!finished && memento.currentRound === undefined) {
-    throw new Error("Invalid game memento: missing currentRound");
+    throw new Error('Invalid game memento: missing currentRound');
   }
   if (finished && memento.currentRound !== undefined) {
-    throw new Error("Invalid game memento: unexpected currentRound for finished game");
+    throw new Error('Invalid game memento: unexpected currentRound for finished game');
   }
 
+  // ----- build a real Game, then hydrate it -----
+  const game = makeGame(
+    randomizer,
+    shuffler,
+    memento.cardsPerPlayer ?? 7,
+    memento.players,
+    memento.targetScore
+  );
 
-  const game = Object.create(Game.prototype) as Game;
-
-  (game as any).players = [...memento.players];
-  (game as any).playerCount = memento.players.length;
-  (game as any).targetScore = memento.targetScore;
+  // overwrite internal state to match the memento
   (game as any).scores = [...memento.scores];
 
-  (game as any).randomizer = randomizer ?? standardRandomizer;
-  (game as any).shuffler = shuffler ?? standardShuffler;
-  (game as any).cardsPerPlayer = memento.cardsPerPlayer ?? 7;
+  (game as any).presentRound = finished
+    ? undefined
+    : createRoundFromMemento(memento.currentRound, shuffler);
 
-  if (memento.currentRound) {
-    (game as any).presentRound = createRoundFromMemento(memento.currentRound, shuffler ?? standardShuffler);
-  } else {
-    (game as any).presentRound = undefined;
-  }
+  // if your implementation tracks these separately, keep them in sync
+  (game as any).playerCount = memento.players.length;
+  (game as any).targetScore = memento.targetScore;
 
   return game;
 }

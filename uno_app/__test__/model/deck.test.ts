@@ -4,6 +4,7 @@ import { standardShuffler } from '../../src/utils/random_utils'
 import { is } from '../utils/predicates'
 import * as deck from '../../src/model/deck'
 import { memoizingShuffler } from '../utils/shuffling'
+export type { Deck, MakeDeck } from "../../src/model/interfaces/deck_interface";
 
 describe("Initial deck", () => {
   const initialDeck = createInitialDeck()
