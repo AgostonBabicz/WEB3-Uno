@@ -1,10 +1,10 @@
+// store/unoGameStore.ts
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import { Card, Color } from '@uno/shared/model/deck'
+import type { Card, Color } from '@uno/shared/model/deck'
 import type { Round } from '@uno/shared/model/interfaces/round_interface'
-import type { Game } from '@uno/shared/model/interfaces/game_interface'
 import { standardRandomizer, standardShuffler } from '@uno/shared/utils/random_utils'
-import { randomDelay } from '@uno/shared/utils/bot_delay'
+import type { Game } from '@uno/shared/model/interfaces/game_interface'
 import { makeGame } from '@uno/shared/model/uno'
 
 type Opts = {
@@ -18,6 +18,45 @@ type GameLike = {
   currentRound: () => Round | undefined
   winner: () => number | undefined
   score: (ix: number) => number
+}
+
+// lazy worker instance
+let botWorker: Worker | null = null
+function getBotWorker() {
+  if (!botWorker) {
+    botWorker = new Worker(new URL('../src/bot.worker.ts', import.meta.url), { type: 'module' })
+  }
+  return botWorker
+}
+function disposeWorker() {
+  if (botWorker) {
+    botWorker.terminate()
+    botWorker = null
+  }
+}
+
+// structured-clone safe serializer
+function toPlain<T>(val: T): T {
+  return deepStrip(val) as T
+}
+function deepStrip(input: any): any {
+  if (input == null) return input
+  if (Array.isArray(input)) return input.map(deepStrip)
+  const t = typeof input
+  if (t === 'function' || t === 'symbol') return undefined
+  if (t !== 'object') return input
+
+  // plain object check
+  const isPlain = Object.prototype.toString.call(input) === '[object Object]'
+  const src = isPlain ? input : Object.assign({}, input)
+
+  const out: any = {}
+  for (const k of Object.keys(src)) {
+    const v = src[k]
+    if (typeof v === 'function' || typeof v === 'symbol') continue
+    out[k] = deepStrip(v)
+  }
+  return out
 }
 
 export const useUnoGameStore = defineStore('unoGame', () => {
@@ -37,7 +76,6 @@ export const useUnoGameStore = defineStore('unoGame', () => {
   }
 
   const optsRef = ref<Opts | null>(null)
-  // keep the real instance, but expose as GameLike for helpers to avoid  mismatch
   const game = ref<Game | null>(null)
 
   function attachRoundListener(r: Round) {
@@ -48,18 +86,17 @@ export const useUnoGameStore = defineStore('unoGame', () => {
     })
   }
 
-  // accept the minimal shape we patch
   function wireStartNewRound(g: GameLike) {
     const origStartNewRound = g.startNewRound.bind(g)
-    ;(g as any).startNewRound = () => {
-      origStartNewRound()
-      const cr = g.currentRound()
-      if (cr) attachRoundListener(cr)
-    }
+      ; (g as any).startNewRound = () => {
+        origStartNewRound()
+        const cr = g.currentRound()
+        if (cr) attachRoundListener(cr)
+      }
   }
 
   function init(opts: Opts) {
-    optsRef.value = opts
+    optsRef.value = toPlain(opts) // avoid proxies in players array
     game.value = makeGame(
       standardRandomizer,
       standardShuffler,
@@ -67,7 +104,6 @@ export const useUnoGameStore = defineStore('unoGame', () => {
       opts.players,
       opts.targetScore ?? 500,
     )
-    // cast to GameLike only where needed
     wireStartNewRound(game.value as unknown as GameLike)
     const r = (game.value as unknown as GameLike).currentRound()
     if (r) attachRoundListener(r)
@@ -150,118 +186,121 @@ export const useUnoGameStore = defineStore('unoGame', () => {
     return r.catchUnoFailure({ accuser, accused })
   }
 
-  // bots
+  // bot helpers
   function isBot(ix: number) {
     const opts = optsRef.value
     if (!opts) return false
     return ix >= 0 && ix < opts.players.length - 1
   }
-  function chooseWildColor(ix: number): Color {
-    const hand = handOf(ix)
-    const counts: Record<Color, number> = { RED: 0, YELLOW: 0, GREEN: 0, BLUE: 0 }
-    for (const c of hand) {
-      if ('color' in c) counts[(c as any).color as Color]++
-    }
-    let best: Color = 'RED'
-    let bestN = -1
-    for (const k of Object.keys(counts) as Color[]) {
-      if (counts[k] > bestN) {
-        best = k
-        bestN = counts[k]
-      }
-    }
-    return best
+  function buildCanPlayArray(r: Round, handLen: number): boolean[] {
+    const res: boolean[] = []
+    for (let i = 0; i < handLen; i++) res.push(r.canPlay(i))
+    return res
   }
-  function botTryAccuse(ix: number) {
+  function allOtherPlayers(ix: number): number[] {
     const opts = optsRef.value
-    if (!opts) return
-    for (let t = 0; t < opts.players.length; t++) {
-      if (t === ix) continue
-      try {
-        accuse(ix, t)
-          ? setMessage(
-              'You are accused!',
-              `${opts.players[ix]} accuses ${opts.players[t]} of not saying UNO! Now Draw 4`,
-            )
-          : null
-      } catch (e) {
-        // ignore, just means bot was wrong
-      }
-    }
+    if (!opts) return []
+    const arr: number[] = []
+    for (let i = 0; i < opts.players.length; i++) if (i !== ix) arr.push(i)
+    return arr
   }
+
+  // worker-based bot
   async function botTakeTurn(): Promise<boolean> {
     const r = round()
     if (!r) return false
+
     const ix = r.playerInTurn()
     if (ix === undefined || !isBot(ix)) return false
 
-    //changed the delay to vary
-    await new Promise((res) => setTimeout(res, randomDelay()))
-    botTryAccuse(ix)
+    const opts = optsRef.value
+    if (!opts) return false
 
-    const hand = handOf(ix)
-    let played = false
-    for (let i = 0; i < hand.length; i++) {
-      if (r.canPlay(i)) {
-        const card = hand[i]
-        if (card.type === 'WILD' || card.type === 'WILD DRAW') {
-          setMessage(
-            'Bot plays',
-            `Bot ${optsRef.value?.players[ix]} plays ${card.type} and chooses ${chooseWildColor(ix)}`,
-          )
-          playCard(i, chooseWildColor(ix))
-        } else {
-          playCard(i)
-        }
-        played = true
-        break
-      }
-    }
-    if (!played) {
-      draw()
+    const worker = getBotWorker()
+
+    const canBotPlayNow = () => {
+      const rawHand = handOf(ix)
+      return buildCanPlayArray(r, rawHand.length).some(Boolean)
     }
 
-    // 50% chance to say UNO when having one card left
-    if (handCountOf(ix) === 1) {
-      if (Math.random() > 0.5) {
-        setMessage('Bot says UNO!', `Bot ${optsRef.value?.players[ix]} says UNO!`)
-        sayUno(ix)
+    const mkPayload = () => {
+      const rawHand = handOf(ix)
+      return {
+        kind: 'TURN' as const,
+        ix,
+        players: toPlain(opts.players.slice()),
+        hand: toPlain(rawHand),
+        canPlay: toPlain(buildCanPlayArray(r, rawHand.length)),
+        oneCardLeft: rawHand.length === 1,
+        accuseCandidates: toPlain(allOtherPlayers(ix)),
       }
     }
+
+    const reply: {
+      action: 'play' | 'draw'
+      cardIx?: number
+      askedColor?: Color
+      sayUno?: boolean
+      accusations?: number[]
+      message?: { title: string; text: string }
+    } = await new Promise((resolve, reject) => {
+      const onMsg = (ev: MessageEvent<any>) => {
+        worker.removeEventListener('message', onMsg as any)
+        resolve(ev.data)
+      }
+      const onErr = (e: any) => {
+        worker.removeEventListener('error', onErr as any)
+        reject(e)
+      }
+      worker.addEventListener('message', onMsg as any, { once: true })
+      worker.addEventListener('error', onErr as any, { once: true })
+      worker.postMessage(mkPayload())
+    })
+
+    for (const t of reply.accusations ?? []) {
+      try {
+        accuse(ix, t) && setMessage('You are accused!', `${opts.players[ix]} accuses ${opts.players[t]} of not saying UNO! Now Draw 4`)
+      } catch { }
+    }
+
+    if (reply.message) setMessage(reply.message.title, reply.message.text)
+
+    if (reply.action === 'play' && typeof reply.cardIx === 'number') {
+      if (reply.askedColor) playCard(reply.cardIx, reply.askedColor)
+      else playCard(reply.cardIx)
+    } else {
+      const MAX_EXTRA_DRAWS = 30
+      let draws = 0
+      do {
+        const beforeTurn = r.playerInTurn()
+        draw()
+        draws++
+        if (r.playerInTurn() !== beforeTurn) break
+        if (canBotPlayNow()) break
+      } while (draws < MAX_EXTRA_DRAWS)
+    }
+
+    if (reply.sayUno) {
+      setMessage('Bot says UNO!', `Bot ${opts.players[ix]} says UNO!`)
+      sayUno(ix)
+    }
+
     return true
   }
 
   function reset() {
     const opts = optsRef.value
     if (!opts) return
+    disposeWorker()
     init(opts)
   }
 
   return {
-    init,
-    reset,
+    init, reset,
     game,
-    round,
-    playerInTurn,
-    hasEnded,
-    winner,
-    isGameOver,
-    gameWinner,
-    scoreOf,
-    topDiscard,
-    drawPileSize,
-    handOf,
-    handCountOf,
-    canPlayAt,
-    playCard,
-    draw,
-    sayUno,
-    accuse,
+    round, playerInTurn, hasEnded, winner, isGameOver, gameWinner, scoreOf, topDiscard, drawPileSize, handOf, handCountOf, canPlayAt,
+    playCard, draw, sayUno, accuse,
     botTakeTurn,
-    showPopUpMessage,
-    popUpMessage,
-    popUpTitle,
-    setMessage,
-    clearMessage,
+    showPopUpMessage, popUpMessage, popUpTitle, setMessage, clearMessage,
   }
 })
