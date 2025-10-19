@@ -1,7 +1,7 @@
 import { describe, it, test, expect, beforeEach } from '@jest/globals'
 import { createRound, createRoundFromMemento} from '../utils/test_adapter'
-import { Round } from '../../src/model/round'
 import { shuffleBuilder } from '../utils/shuffling'
+import { Round } from '../../src/model/interfaces/round_interface'
 
 describe('catching failure to say "UNO!"', () => {
   describe("single UNO scenario", () => {

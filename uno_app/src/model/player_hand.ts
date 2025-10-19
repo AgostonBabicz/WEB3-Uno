@@ -1,7 +1,7 @@
-import { Card, Color, isColored } from "./deck";
-import { PlayerHandInterface } from "./interfaces/player_hand_interface";
+import { Card, isColored } from "./deck";
+import type { PlayerHand,MakePlayerHand } from "./interfaces/player_hand_interface";
 
-export class PlayerHand implements PlayerHandInterface {
+export class PlayerHandImplementation implements PlayerHand {
     private playerHand: Card[]
 
     constructor(playerHand: Card[] = []) {
@@ -24,3 +24,8 @@ export class PlayerHand implements PlayerHandInterface {
     }
 
 }
+
+
+export const makePlayerHand : MakePlayerHand = (cards=[]) => new PlayerHandImplementation(cards)
+
+export { PlayerHand };

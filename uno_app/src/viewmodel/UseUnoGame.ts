@@ -1,8 +1,8 @@
 import { ref } from 'vue'
-import { Game } from '../model/uno'
 import { standardRandomizer, standardShuffler } from '../utils/random_utils'
 import type { Card, Color } from '../model/deck'
-import { Round } from '../model/round'
+import { makeGame } from '../model/uno'
+import type { Round } from '../model/interfaces/round_interface'
 
 type Opts = {
   players: string[]
@@ -30,12 +30,12 @@ function clearMessage() {
 export function useUnoGame(opts: Opts) {
   // model, reactive box ? so vue tracks the reference and our getters read 'fresh' state with game.value
   const game = ref(
-    new Game(
-      opts.players,
-      opts.targetScore ?? 500,
+    makeGame(
       standardRandomizer,
       standardShuffler,
       opts.cardsPerPlayer ?? 7,
+      opts.players,
+      opts.targetScore ?? 500,
     ),
   )
   function attachRoundListener(r: Round) {

@@ -2,9 +2,10 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import type { Card, Color } from '../src/model/deck'
-import { Round } from '../src/model/round'
-import { Game } from '../src/model/uno'
+import type { Round } from '../src/model/interfaces/round_interface'
 import { standardRandomizer, standardShuffler } from '../src/utils/random_utils'
+import type { Game } from '../src/model/interfaces/game_interface'
+import { makeGame } from '../src/model/uno'
 
 type Opts = {
   players: string[]
@@ -87,21 +88,21 @@ export const useUnoGameStore = defineStore('unoGame', () => {
 
   function wireStartNewRound(g: GameLike) {
     const origStartNewRound = g.startNewRound.bind(g)
-    ;(g as any).startNewRound = () => {
-      origStartNewRound()
-      const cr = g.currentRound()
-      if (cr) attachRoundListener(cr)
-    }
+      ; (g as any).startNewRound = () => {
+        origStartNewRound()
+        const cr = g.currentRound()
+        if (cr) attachRoundListener(cr)
+      }
   }
 
   function init(opts: Opts) {
     optsRef.value = toPlain(opts) // avoid proxies in players array
-    game.value = new Game(
-      opts.players,
-      opts.targetScore ?? 500,
+    game.value = makeGame(
       standardRandomizer,
       standardShuffler,
       opts.cardsPerPlayer ?? 7,
+      opts.players,
+      opts.targetScore ?? 500,
     )
     wireStartNewRound(game.value as unknown as GameLike)
     const r = (game.value as unknown as GameLike).currentRound()
@@ -215,36 +216,35 @@ export const useUnoGameStore = defineStore('unoGame', () => {
     const opts = optsRef.value
     if (!opts) return false
 
-    const rawHand = handOf(ix)
-    const hand = toPlain(rawHand)
-    const canPlay = toPlain(buildCanPlayArray(r, rawHand.length))
-    const oneCardLeft = rawHand.length === 1
-    const accuseCandidates = toPlain(allOtherPlayers(ix))
-    const playersPlain = toPlain(opts.players.slice())
-
     const worker = getBotWorker()
 
-    type BotReply = {
+    const canBotPlayNow = () => {
+      const rawHand = handOf(ix)
+      return buildCanPlayArray(r, rawHand.length).some(Boolean)
+    }
+
+    const mkPayload = () => {
+      const rawHand = handOf(ix)
+      return {
+        kind: 'TURN' as const,
+        ix,
+        players: toPlain(opts.players.slice()),
+        hand: toPlain(rawHand),
+        canPlay: toPlain(buildCanPlayArray(r, rawHand.length)),
+        oneCardLeft: rawHand.length === 1,
+        accuseCandidates: toPlain(allOtherPlayers(ix)),
+      }
+    }
+
+    const reply: {
       action: 'play' | 'draw'
       cardIx?: number
       askedColor?: Color
       sayUno?: boolean
       accusations?: number[]
       message?: { title: string; text: string }
-    }
-
-    const payload = {
-      kind: 'TURN' as const,
-      ix,
-      players: playersPlain,
-      hand,
-      canPlay,
-      oneCardLeft,
-      accuseCandidates,
-    }
-
-    const reply = await new Promise<BotReply>((resolve, reject) => {
-      const onMsg = (ev: MessageEvent<BotReply>) => {
+    } = await new Promise((resolve, reject) => {
+      const onMsg = (ev: MessageEvent<any>) => {
         worker.removeEventListener('message', onMsg as any)
         resolve(ev.data)
       }
@@ -254,29 +254,30 @@ export const useUnoGameStore = defineStore('unoGame', () => {
       }
       worker.addEventListener('message', onMsg as any, { once: true })
       worker.addEventListener('error', onErr as any, { once: true })
-
-      worker.postMessage(payload) // payload is JSON-safe
+      worker.postMessage(mkPayload())
     })
 
-    // accusations first
     for (const t of reply.accusations ?? []) {
       try {
         accuse(ix, t) && setMessage('You are accused!', `${opts.players[ix]} accuses ${opts.players[t]} of not saying UNO! Now Draw 4`)
-      } catch {}
+      } catch { }
     }
 
-    if (reply.message) {
-      setMessage(reply.message.title, reply.message.text)
-    }
+    if (reply.message) setMessage(reply.message.title, reply.message.text)
 
     if (reply.action === 'play' && typeof reply.cardIx === 'number') {
-      if (reply.askedColor) {
-        playCard(reply.cardIx, reply.askedColor)
-      } else {
-        playCard(reply.cardIx)
-      }
+      if (reply.askedColor) playCard(reply.cardIx, reply.askedColor)
+      else playCard(reply.cardIx)
     } else {
-      draw()
+      const MAX_EXTRA_DRAWS = 30
+      let draws = 0
+      do {
+        const beforeTurn = r.playerInTurn()
+        draw()
+        draws++
+        if (r.playerInTurn() !== beforeTurn) break
+        if (canBotPlayNow()) break
+      } while (draws < MAX_EXTRA_DRAWS)
     }
 
     if (reply.sayUno) {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Card, CardNumber, Color, Type } from '../model/deck';
+import { CardNumber, Color, Type } from '../model/deck';
 
 const props = defineProps<{
     type: Type

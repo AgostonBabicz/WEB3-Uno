@@ -1,6 +1,7 @@
 import { describe, it, test, expect } from '@jest/globals'
 import { createGame, createGameFromMemento } from '../utils/test_adapter'
-import { Game, GameMemento } from '../../src/model/uno'
+import {GameMemento } from '../../src/model/uno'
+import { Game } from '../../src/model/interfaces/game_interface'
 
 
 describe("Game set up", () => {

@@ -1,11 +1,13 @@
 //took out unused imports
 import { mod } from "../utils/mod";
 import { Shuffler } from "../utils/random_utils";
-import { Card, Deck, createInitialDeck, Color, isColored } from "./deck";
-import { RoundInterface } from "./interfaces/round_interface";
-import { PlayerHand } from "./player_hand";
+import { Card, createInitialDeck, Color, isColored, makeDeck } from "./deck";
+import type { Deck } from "./interfaces/deck_interface";
+import type { MakeRound, Round } from "./interfaces/round_interface";
+import type { PlayerHand } from "./interfaces/player_hand_interface";
+import { makePlayerHand } from "./player_hand";
 
-export class Round implements RoundInterface {
+export class RoundImplementation implements Round {
   playerCount: number
   private players: string[]
   private currentPlayerIndex: number
@@ -17,26 +19,25 @@ export class Round implements RoundInterface {
   cardsPerPlay: number | undefined
   private startResolved: boolean = false
   private currentDirection = 'clockwise'
-  private direction: number
+  private direction: number;
   private currentColor = ""
   private resolving: boolean = false;
 
-  private lastActor: number | null = null;                  
+  private lastActor: number | null = null;
   private lastUnoSayer: number | null = null;             //most recen uno sayer (any1)
   private pendingUnoAccused: number | null = null;        //who just went to 1 card 
-  private unoProtectedForWindow = false; 
+  private unoProtectedForWindow = false;
   private unoSayersSinceLastAction = new Set<number>();
 
   private endCallbacks: Array<(e: { winner: number }) => void> = [];
 
-  //just for tests ig idk how else 
   private ensureUnoState(): void {
     if (this.pendingUnoAccused === undefined) this.pendingUnoAccused = null;
     if (this.unoProtectedForWindow === undefined) this.unoProtectedForWindow = false;
     if (this.lastUnoSayer === undefined) this.lastUnoSayer = null;
     if (this.lastActor === undefined) this.lastActor = null;
     if (this.unoSayersSinceLastAction === undefined) {
-        this.unoSayersSinceLastAction = new Set<number>();
+      this.unoSayersSinceLastAction = new Set<number>();
     }
   }
 
@@ -45,7 +46,7 @@ export class Round implements RoundInterface {
   isWildTop = () => this.isWild(this.discardDeck.top()!.type) || this.isWild(this.drawDeck.top()!.type);
 
   dealAll = () => {
-    this.playerHands = Array.from({ length: this.playerCount }, () => new PlayerHand());
+    this.playerHands = Array.from({ length: this.playerCount }, () => makePlayerHand());
     const n = this.cardsPerPlay ?? 7;
     for (let p = 0; p < this.playerCount; p++) {
       for (let j = 0; j < n; j++) {
@@ -66,7 +67,7 @@ export class Round implements RoundInterface {
     this.dealer = dealer
     this.currentPlayerIndex = dealer
     this.cardsPerPlay = cardsPerPlay
-    this.discardDeck = new Deck([])
+    this.discardDeck = makeDeck([])
     this.playerHands = []
     this.shuffler = shuffler
 
@@ -77,11 +78,11 @@ export class Round implements RoundInterface {
     while (true) {
       const top = this.drawDeck.deal();
       if (!top) throw new Error("Not enough cards");
-      this.discardDeck = new Deck([top]);
+      this.discardDeck = makeDeck([top]);
 
       //discardDeck.top is literally top that was just dealt
       if (this.isWild(top.type)) {
-        this.drawDeck = new Deck([top, ...this.drawDeck.getDeck()])
+        this.drawDeck = makeDeck([top, ...this.drawDeck.getDeck()])
         this.drawDeck.shuffle(this.shuffler);
         continue;
       }
@@ -89,8 +90,8 @@ export class Round implements RoundInterface {
     }
 
     const startTop = this.discardDeck.top()!;
-    if (isColored(startTop)) { 
-        this.currentColor = startTop.color;
+    if (isColored(startTop)) {
+      this.currentColor = startTop.color;
     }
 
     this.playerInTurn();
@@ -134,20 +135,20 @@ export class Round implements RoundInterface {
       return this.currentPlayerIndex;
     }
     if (this.winner() !== undefined) {
-        return undefined;
+      return undefined;
     }
     return this.currentPlayerIndex;
   }
   canPlayAny(): boolean {
     if (this.winner() !== undefined) {
-        return false
+      return false
     }
     return this.playerHand(this.currentPlayerIndex).filter((card, index) => this.canPlay(index)).length > 0
   }
 
   canPlay(cardIx: number): boolean {
     if (this.winner() !== undefined) {
-        return false
+      return false
     }
     const hand = this.playerHands[this.currentPlayerIndex];
     const size = hand.size();
@@ -161,7 +162,7 @@ export class Round implements RoundInterface {
       switch (top.type) {
         case 'NUMBERED':
           if (played.type === 'NUMBERED') {
-                        return played.color === effectiveColor || played.number === (isColored(top) ? top.number : -1);
+            return played.color === effectiveColor || played.number === (isColored(top) ? top.number : -1);
           }
           return played.color === effectiveColor;
 
@@ -183,9 +184,9 @@ export class Round implements RoundInterface {
         return true;
       }
       if (played.type === 'WILD DRAW') {
-                if (effectiveColor) {
-                    return !hand.hasColor(effectiveColor);
-                }
+        if (effectiveColor) {
+          return !hand.hasColor(effectiveColor);
+        }
         return true;
       }
     }
@@ -213,11 +214,11 @@ export class Round implements RoundInterface {
     const hand = this.playerHand(p)
 
     if (hand.length === 0) {
-        throw new Error("Illegal play index");
+      throw new Error("Illegal play index");
     }
     if (cardIx < 0 || cardIx >= hand.length) {
-            cardIx = hand.length - 1;
-        }
+      throw new Error("Illegal play index");
+    }
 
     const playedCard: Card = hand[cardIx]
     const isWildCard: boolean = playedCard.type == "WILD" || playedCard.type == 'WILD DRAW'
@@ -229,10 +230,10 @@ export class Round implements RoundInterface {
       throw new Error("Illegal play: Cannot not ask for color on a wild card");
     }
     try {
-        const canPlay: boolean = this.canPlay(cardIx)
-        if (!canPlay) {
-            throw new Error("Illegal play: " + `\n${playedCard}\n${this.discardDeck.top()}`)
-        }
+      const canPlay: boolean = this.canPlay(cardIx)
+      if (!canPlay) {
+        throw new Error("Illegal play: " + `\n${playedCard}\n${this.discardDeck.top()}`)
+      }
 
       // open for accusation when player goes from 2 to 1 card
       if (hand.length === 2) {
@@ -244,14 +245,14 @@ export class Round implements RoundInterface {
       }
 
       this.playerHands[p].playCard(cardIx)
-      this.discardDeck = new Deck([playedCard, ...this.discardDeck.getDeck()])
+      this.discardDeck = makeDeck([playedCard, ...this.discardDeck.getDeck()])
       if (isColored(playedCard)) {
         this.currentColor = playedCard.color;
       } else {
         this.currentColor = askedColor ?? "";
       }
       switch (this.discardDeck.top()?.type) {
-        case 'NUMBERED': 
+        case 'NUMBERED':
           this.currentPlayerIndex = mod(this.currentPlayerIndex + this.direction, this.playerCount)
           break;
         case 'DRAW':
@@ -260,20 +261,25 @@ export class Round implements RoundInterface {
           this.currentPlayerIndex = mod(drawTarget + this.direction, this.playerCount)
           break;
         case 'SKIP':
-                    this.currentPlayerIndex = mod(this.currentPlayerIndex + (this.direction * 2), this.playerCount)
-                    break;
+          this.currentPlayerIndex = mod(this.currentPlayerIndex + (this.direction * 2), this.playerCount)
+          break;
         case 'REVERSE':
-                    this.direction = -this.direction
-                    this.currentPlayerIndex = mod(this.currentPlayerIndex + this.direction, this.playerCount)
-                    break;
+          this.direction = -this.direction;
+          this.currentDirection = this.direction === 1 ? 'clockwise' : 'counterclockwise';
+          if (this.playerCount === 2) {
+            this.currentPlayerIndex = mod(this.currentPlayerIndex + (this.direction * 2), this.playerCount)
+          } else {
+            this.currentPlayerIndex = mod(this.currentPlayerIndex + this.direction, this.playerCount)
+          }
+          break;
         case 'WILD':
-                    this.currentPlayerIndex = mod(this.currentPlayerIndex + this.direction, this.playerCount)
-                    break;
+          this.currentPlayerIndex = mod(this.currentPlayerIndex + this.direction, this.playerCount)
+          break;
         case 'WILD DRAW':
-                    const wildTarget = mod(this.currentPlayerIndex + this.direction, this.playerCount)
-                    this.drawTo(wildTarget, 4)
-                    this.currentPlayerIndex = mod(wildTarget + this.direction, this.playerCount)
-                    break;
+          const wildTarget = mod(this.currentPlayerIndex + this.direction, this.playerCount)
+          this.drawTo(wildTarget, 4)
+          this.currentPlayerIndex = mod(wildTarget + this.direction, this.playerCount)
+          break;
       }
       this.lastActor = p;
       const w = this.winner();
@@ -304,8 +310,8 @@ export class Round implements RoundInterface {
         const top = this.discardDeck.top();
         const underTop = this.discardDeck.getDeckUnderTop();
         if (!underTop || underTop.length === 0) throw new Error("No cards left to draw");
-        this.discardDeck = new Deck(top ? [top] : []);
-        this.drawDeck = new Deck(underTop);
+        this.discardDeck = makeDeck(top ? [top] : []);
+        this.drawDeck = makeDeck(underTop);
         this.drawDeck.shuffle(this.shuffler!);
         c = this.drawDeck.deal();
         if (!c) throw new Error("No cards left to draw");
@@ -333,7 +339,14 @@ export class Round implements RoundInterface {
 
     this.playerHands[p].add(drawn);
     this.lastActor = p;
-
+    if (this.drawDeck.size === 0) {
+      const top = this.discardDeck.top();
+      const underTop = this.discardDeck.getDeckUnderTop();
+      if (!underTop || underTop.length === 0) throw new Error("No cards left to draw");
+      this.discardDeck = makeDeck(top ? [top] : []);
+      this.drawDeck = makeDeck(underTop);
+      this.drawDeck.shuffle(this.shuffler!);
+    }
     if (!this.canPlay(this.playerHands[p].size() - 1)) {
       this.currentPlayerIndex = mod(this.currentPlayerIndex + this.direction, this.playerCount);
     }
@@ -342,12 +355,12 @@ export class Round implements RoundInterface {
   }
 
   catchUnoFailure({ accuser, accused }: { accuser: number, accused: number }): boolean {
-        if (accused < 0) {
-            throw new Error("Accused cannot be negative")
-        }
-        if (accused >= this.playerCount) {
-            throw new Error("Accused cannot be beyond the player count")
-        }
+    if (accused < 0) {
+      throw new Error("Accused cannot be negative")
+    }
+    if (accused >= this.playerCount) {
+      throw new Error("Accused cannot be beyond the player count")
+    }
 
     // must be accusing the player who just went to 1 card and while the window is open
     if (this.pendingUnoAccused === null || accused !== this.pendingUnoAccused) return false;
@@ -372,17 +385,17 @@ export class Round implements RoundInterface {
   winner(): number | undefined {
     for (let i = 0; i < this.playerHands.length; i++) {
       const hand: PlayerHand = this.playerHands[i]
-            if (hand.size() == 0) {
-                return i
-            }
+      if (hand.size() == 0) {
+        return i
+      }
     }
     return undefined
   }
   score(): number | undefined {
     const w = this.winner()
     if (w === undefined) {
-            return undefined
-        }
+      return undefined
+    }
     let sum = 0
     for (let i = 0; i < this.playerHands.length; i++) {
       if (i === w) continue;
@@ -444,3 +457,5 @@ export class Round implements RoundInterface {
     }
   }
 }
+
+export const makeRound:MakeRound = (players: string[], dealer: number, shuffler: Shuffler<Card>, cardsPerPlay: number) => new RoundImplementation(players,dealer,shuffler,cardsPerPlay)
