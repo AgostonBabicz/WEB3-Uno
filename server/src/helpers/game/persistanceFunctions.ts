@@ -2,7 +2,7 @@
 
 import { GameRepository } from "../../repository/gameRepository"
 import { RoundRepository } from "../../repository/roundRepository"
-import type { Game } from "@uno/shared/model/uno"
+import type { Game } from "@uno/shared/model/interfaces/game_interface"
 import type { Card } from "@uno/shared/model/deck"
 
 // Minimal DTOs so we never import the old GameRuntime again
@@ -24,7 +24,7 @@ function computePointsFromHands(hands: Card[][], winnerIx: number): { perPlayer:
         case "REVERSE":
         case "DRAW": sum += 20; break
         case "WILD":
-        case "WILD_DRAW": sum += 50; break
+        case "WILD DRAW": sum += 50; break
       }
     }
     perPlayer[i] = sum

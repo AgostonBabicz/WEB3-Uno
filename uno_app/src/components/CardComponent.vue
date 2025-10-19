@@ -23,7 +23,7 @@ function numberLabel(n?: CardNumber | string | number): string {
           ? numberLabel(props.number)
           : type === 'DRAW'
             ? '+2'
-            : type === 'WILD_DRAW'
+            : type === 'WILD DRAW'
               ? '+4'
               : type === 'REVERSE'
                 ? '↺'
@@ -35,14 +35,14 @@ function numberLabel(n?: CardNumber | string | number): string {
 
     <span
       class="main"
-      :class="[type !== 'NUMBERED' && type !== 'WILD' && type !== 'WILD_DRAW' ? 'symbol' : '']"
+      :class="[type !== 'NUMBERED' && type !== 'WILD' && type !== 'WILD DRAW' ? 'symbol' : '']"
     >
       {{
         type === 'NUMBERED'
           ? numberLabel(props.number)
           : type === 'DRAW'
             ? '+2'
-            : type === 'WILD_DRAW'
+            : type === 'WILD DRAW'
               ? '+4'
               : type === 'REVERSE'
                 ? '↺'
@@ -58,7 +58,7 @@ function numberLabel(n?: CardNumber | string | number): string {
           ? numberLabel(props.number)
           : type === 'DRAW'
             ? '+2'
-            : type === 'WILD_DRAW'
+            : type === 'WILD DRAW'
               ? '+4'
               : type === 'REVERSE'
                 ? '↺'

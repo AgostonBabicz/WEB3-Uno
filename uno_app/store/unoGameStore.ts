@@ -1,10 +1,11 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { Card, Color } from '@uno/shared/model/deck'
-import { Round } from '@uno/shared/model/round'
-import { Game } from '@uno/shared/model/uno'
+import type { Round } from '@uno/shared/model/interfaces/round_interface'
+import type { Game } from '@uno/shared/model/interfaces/game_interface'
 import { standardRandomizer, standardShuffler } from '@uno/shared/utils/random_utils'
 import { randomDelay } from '@uno/shared/utils/bot_delay'
+import { makeGame } from '@uno/shared/model/uno'
 
 type Opts = {
   players: string[]
@@ -59,12 +60,12 @@ export const useUnoGameStore = defineStore('unoGame', () => {
 
   function init(opts: Opts) {
     optsRef.value = opts
-    game.value = new Game(
-      opts.players,
-      opts.targetScore ?? 500,
+    game.value = makeGame(
       standardRandomizer,
       standardShuffler,
       opts.cardsPerPlayer ?? 7,
+      opts.players,
+      opts.targetScore ?? 500,
     )
     // cast to GameLike only where needed
     wireStartNewRound(game.value as unknown as GameLike)
@@ -203,7 +204,7 @@ export const useUnoGameStore = defineStore('unoGame', () => {
     for (let i = 0; i < hand.length; i++) {
       if (r.canPlay(i)) {
         const card = hand[i]
-        if (card.type === 'WILD' || card.type === 'WILD_DRAW') {
+        if (card.type === 'WILD' || card.type === 'WILD DRAW') {
           setMessage(
             'Bot plays',
             `Bot ${optsRef.value?.players[ix]} plays ${card.type} and chooses ${chooseWildColor(ix)}`,

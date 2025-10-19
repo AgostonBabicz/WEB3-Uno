@@ -56,8 +56,8 @@ onMounted(async () => {
   if (id) {
     // ensure the store knows which game we're viewing and subscribe to events
     if (store.gameId !== id) store.gameId = id
-    await store.subscribeAll().catch(() => {})
-    await store.refreshMyHand().catch(() => {})
+    await store.subscribeAll().catch(() => { })
+    await store.refreshMyHand().catch(() => { })
   }
 })
 </script>
@@ -77,50 +77,32 @@ onMounted(async () => {
       </template>
     </div>
 
-    <button
-      v-if="!roundStarted"
-      class="start-round-btn"
-      :disabled="!enoughPlayers"
-      @click="onStartRound"
-    >
+    <button v-if="!roundStarted" class="start-round-btn" :disabled="!enoughPlayers" @click="onStartRound">
       Start Round
     </button>
 
     <header class="row opponents">
-      <div
-        v-for="(p, ix) in players.filter((_: any, i: any) => i !== meIx)"
-        :key="p.id"
-        class="opponent"
-        :class="{ playing: currentTurn === players.indexOf(p) }"
-        @click="accuseOpponent(players.indexOf(p))"
-        title="Click to accuse this player"
-      >
+      <div v-for="(p, ix) in players.filter((_: any, i: any) => i !== meIx)" :key="p.id" class="opponent"
+        :class="{ playing: currentTurn === players.indexOf(p) }" @click="accuseOpponent(players.indexOf(p))"
+        title="Click to accuse this player">
         <div class="column">
           <span class="name">{{ p.name }}</span>
           <span class="score">(Score: {{ p.score }})</span>
         </div>
 
         <div class="bot-hand">
-          <i v-for="i in p.handCount" :key="i" class="bot-card"></i>
+          <!-- show at most 10 face-down cards -->
+          <i v-for="i in Math.min(p.handCount ?? 0, 10)" :key="i" class="bot-card"></i>
         </div>
         <span class="count">{{ p.handCount }}</span>
       </div>
     </header>
-    <PopUpMessage
-      :show="!!store.showPopUpMessage"
-      :title="store.popUpTitle || ''"
-      :message="store.popUpMessage || ''"
-      :timeoutMs="6000"
-      @close="store.clearMessage()"
-    />
+    <PopUpMessage :show="!!store.showPopUpMessage" :title="store.popUpTitle || ''" :message="store.popUpMessage || ''"
+      :timeoutMs="6000" @close="store.clearMessage()" />
     <section class="table">
       <div class="pile discard">
-        <CardComponent
-          v-if="store.game?.currentRound?.discardTop"
-          :type="store.game.currentRound.discardTop.type"
-          :color="store.game.currentRound.discardTop.color"
-          :number="store.game.currentRound.discardTop.number"
-        />
+        <CardComponent v-if="store.game?.currentRound?.discardTop" :type="store.game.currentRound.discardTop.type"
+          :color="store.game.currentRound.discardTop.color" :number="store.game.currentRound.discardTop.number" />
       </div>
       <div class="pile draw" @click="onDraw" title="Draw">
         <Deck size="md" v-if="roundStarted" />
@@ -134,20 +116,9 @@ onMounted(async () => {
         <span class="score">(Score: {{ players[meIx]?.score ?? 0 }})</span>
       </div>
       <div class="fan">
-        <button
-          v-for="(card, ix) in yourHand"
-          :key="ix"
-          class="hand-card-btn"
-          :disabled="!myTurn || !store.canPlayAt(ix)"
-          @click="onPlayCard(ix)"
-          title="Play"
-        >
-          <CardComponent
-            :type="card.type"
-            :color="card.color"
-            :number="card.number"
-            class="hand-card"
-          />
+        <button v-for="(card, ix) in yourHand" :key="ix" class="hand-card-btn"
+          :disabled="!myTurn || !store.canPlayAt(ix)" @click="onPlayCard(ix)" title="Play">
+          <CardComponent :type="card.type" :color="card.color" :number="card.number" class="hand-card" />
         </button>
       </div>
 
@@ -159,13 +130,8 @@ onMounted(async () => {
 
     <div v-if="showColorPicker !== null" class="color-picker-backdrop">
       <div class="color-picker">
-        <button
-          v-for="c in ['RED', 'YELLOW', 'GREEN', 'BLUE']"
-          :key="c"
-          class="color-chip"
-          :data-color="c.toLowerCase()"
-          @click="pickColor(c as any)"
-        >
+        <button v-for="c in ['RED', 'YELLOW', 'GREEN', 'BLUE']" :key="c" class="color-chip"
+          :data-color="c.toLowerCase()" @click="pickColor(c as any)">
           {{ c }}
         </button>
       </div>

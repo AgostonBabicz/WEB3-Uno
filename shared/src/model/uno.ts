@@ -1,10 +1,11 @@
-import { Randomizer, Shuffler } from '../utils/random_utils'
-import { Card, Color, Deck } from './deck'
-import { GameInterface } from './interfaces/game_interface'
-import { Round } from './round'
+import { Randomizer, Shuffler } from "../utils/random_utils";
+import { Card, Color } from "./deck";
+import type{ Game, MakeGame } from "./interfaces/game_interface";
+import type{ Round } from "./interfaces/round_interface";
+import { makeRound } from "./round";
 
-export class Game implements GameInterface {
-  public playerCount: Readonly<number>
+export class GameImplementation implements Game {
+    public playerCount: Readonly<number>
   public targetScore: Readonly<number>
   private players: string[]
   private scores: number[] = []
@@ -50,7 +51,7 @@ export class Game implements GameInterface {
         throw new Error('A Game requires at least 2 players to start')
       }
       const dealer = this.randomizer(this.playerCount)
-      this.presentRound = new Round(this.players, dealer, this.shuffler, this.cardsPerPlayer)
+      this.presentRound = makeRound(this.players, dealer, this.shuffler, this.cardsPerPlayer)
       this.attachRoundHandlers()
     }
   }
@@ -119,7 +120,7 @@ export class Game implements GameInterface {
   public startNewRound() {
     if (!this.canStart()) throw new Error('Need at least 2 players to start a round')
     const dealer = this.randomizer(this.playerCount)
-    this.presentRound = new Round(this.players, dealer, this.shuffler, this.cardsPerPlayer)
+    this.presentRound = makeRound(this.players, dealer, this.shuffler, this.cardsPerPlayer)
   }
 }
 
@@ -139,3 +140,5 @@ export type GameMemento = {
     playerInTurn: number
   }
 }
+
+export const makeGame: MakeGame = (randomizer: Randomizer, shuffler: Shuffler<Card>, cardsPerPlayer: number, players: string[] | undefined, targetScore: number | undefined, options?: { deferFirstRound?: boolean }) => new GameImplementation(players, targetScore, randomizer, shuffler, cardsPerPlayer, options)

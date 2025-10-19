@@ -1,6 +1,6 @@
 import { v4 as uuid } from 'uuid'
 import type { Color, Card } from '@uno/shared/model/deck'
-import { Game } from '@uno/shared/model/uno'
+import type { Game } from '@uno/shared/model/interfaces/game_interface'
 
 import { standardRandomizer, standardShuffler } from '@uno/shared/utils/random_utils'
 import {
@@ -8,6 +8,7 @@ import {
   persistPlayerJoin,
   persistRoundStart,
 } from './helpers/game/persistanceFunctions'
+import { makeGame } from '@uno/shared/model/uno'
 
 export type PublishFn = (evt: any) => void
 
@@ -95,12 +96,12 @@ export async function createGame(
 
   const id = uuid()
   const defer = players.length === 1
-  const g = new Game(
-    players,
-    targetScore,
+  const g = makeGame(
     standardRandomizer,
     standardShuffler,
     cardsPerPlayer,
+    players,
+    targetScore,
     { deferFirstRound: defer },
   )
 
@@ -161,12 +162,12 @@ export function resetGame(gameId: string, publish: PublishFn) {
   const snap = g.toMemento()
   const id = gameId
 
-  const ng = new Game(
-    snap.players,
-    snap.targetScore,
+  const ng = makeGame(
     standardRandomizer,
     standardShuffler,
     snap.cardsPerPlayer,
+    snap.players,
+    snap.targetScore
   )
     ; (ng as any).presentRound = undefined
   GAMES.set(id, ng)
